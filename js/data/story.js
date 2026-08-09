@@ -511,6 +511,8 @@ DH.STORY = {
     { t: 'narr', text: 'The storm has stopped. A plank has been run out from the deck to a dock.' },
     { t: 'ambience', id: 'sea' },
     { t: 'thunder', on: false },
+    /* the last of the crossing took most of the morning: you land in daylight */
+    { t: 'do', fn: (s) => { s.minutes = 8 * 60 + 10; s.weather = 'clear'; } },
     { t: 'flag', k: 'act0_done' },
     { t: 'questDone', id: 'pact', xp: 150 },
     { t: 'travel', map: 'dock', spawn: 'start' }

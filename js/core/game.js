@@ -35,11 +35,15 @@ DH.game = (function () {
   let pendingOps = [];
 
   function current() { return stack[stack.length - 1] || null; }
+  /* Each scene declares the world zoom it wants to draw at; set it before the
+     scene runs so nothing has to remember. */
+  function applyZoom(scene) { DH.gfx.setZoom((scene && scene.zoom) || 1); }
   function push(scene, arg) {
     pendingOps.push(() => {
       const cur = current();
       if (cur && cur.pause) cur.pause();
       stack.push(scene);
+      applyZoom(scene);
       if (scene.enter) scene.enter(arg);
     });
   }
@@ -48,6 +52,7 @@ DH.game = (function () {
       const s = stack.pop();
       if (s && s.exit) s.exit(result);
       const cur = current();
+      applyZoom(cur);
       if (cur && cur.resume) cur.resume(result);
     });
   }
@@ -56,6 +61,7 @@ DH.game = (function () {
       while (stack.length) { const s = stack.pop(); if (s && s.exit) s.exit(); }
       DH.ui.clear();
       stack.push(scene);
+      applyZoom(scene);
       if (scene.enter) scene.enter(arg);
     });
   }

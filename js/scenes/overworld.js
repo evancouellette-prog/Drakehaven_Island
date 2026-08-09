@@ -6,6 +6,15 @@ DH.scenes.overworld = (function () {
   'use strict';
   const U = DH.util, G = DH.gfx, C = DH.char, T = DH.gfx.TILE;
 
+  /* The overworld is magnified so a room fills the frame. Small rooms zoom in
+     further; big maps stay at the base zoom and scroll. */
+  const WORLD_ZOOM = 1.5, MAX_ZOOM = 3;
+  let worldZoom = WORLD_ZOOM;
+  function zoomFor(m) {
+    if (!m || !m.pxW) return WORLD_ZOOM;
+    const fill = Math.max(G.VW / m.pxW, G.VH / m.pxH);
+    return Math.min(MAX_ZOOM, Math.max(WORLD_ZOOM, Math.round(fill * 20) / 20));
+  }
   let map = null, player = null, npcs = [], followers = [];
   let hud = null, promptTarget = null, menuOpen = false;
   let stepTimer = 0, walkSfx = 0;
@@ -37,10 +46,15 @@ DH.scenes.overworld = (function () {
     refreshPlayerLook();
 
     /* companions trail behind */
-    followers = DH.game.party().slice(1).map((ch, i) => ({
-      ch: ch, px: player.px - (i + 1) * 6, py: player.py, facing: 'down', moving: false,
-      trail: [], delay: 10 + i * 8
-    }));
+    followers = DH.game.party().slice(1).map((ch, i) => {
+      /* a loose ring, so five companions do not stack into one silhouette */
+      const a = (i / Math.max(1, DH.game.party().length - 1)) * Math.PI * 2 + 0.6;
+      return {
+        ch: ch, px: player.px - (i + 1) * 6, py: player.py,
+        facing: 'down', moving: false, trail: [], delay: 10 + i * 8,
+        ox: Math.round(Math.cos(a) * 13), oy: Math.round(Math.sin(a) * 8)
+      };
+    });
 
     /* NPCs present on this map */
     npcs = (map.npcs || []).map(def => {
@@ -58,6 +72,8 @@ DH.scenes.overworld = (function () {
     }).filter(visibleNpc);
 
     /* music and weather */
+    worldZoom = zoomFor(map);
+    G.setZoom(worldZoom);
     if (map.music) DH.audio.play(map.music);
     DH.audio.ambience(map.ambience || null);
     DH.audio.stormThunder(!!map.thunder);
@@ -253,8 +269,10 @@ DH.scenes.overworld = (function () {
       if (player.trail.length > 90) player.trail.pop();
     }
     followers.forEach((f, i) => {
-      const want = player.trail[Math.min(player.trail.length - 1, 5 + i * 5)];
-      if (!want) return;
+      const lead = player.trail[Math.min(player.trail.length - 1, 5 + i * 5)];
+      if (!lead) return;
+      /* while you stand still they spread into their own spots */
+      const want = player.moving ? lead : { x: player.px + f.ox, y: player.py + f.oy };
       const dx = want.x - f.px, dy = want.y - f.py;
       const d = Math.hypot(dx, dy);
       if (d > 3) {
@@ -541,8 +559,8 @@ DH.scenes.overworld = (function () {
     if (!map) return;
     const cam = G.cam;
     const x0 = Math.max(0, Math.floor(cam.x / T)), y0 = Math.max(0, Math.floor(cam.y / T));
-    const x1 = Math.min(map.w - 1, Math.ceil((cam.x + G.VW) / T));
-    const y1 = Math.min(map.h - 1, Math.ceil((cam.y + G.VH) / T));
+    const x1 = Math.min(map.w - 1, Math.ceil((cam.x + G.viewW()) / T));
+    const y1 = Math.min(map.h - 1, Math.ceil((cam.y + G.viewH()) / T));
 
     /* ground — the painters subtract the camera themselves */
     for (let y = y0; y <= y1; y++) {
@@ -567,7 +585,7 @@ DH.scenes.overworld = (function () {
           scale: n.scale, facing: n.facing, moving: n.moving, bob: !n.asleep,
           phase: (n.px + n.py) * 0.05
         });
-        drawName(n.name, n.px - cam.x, n.py - cam.y - 26 * (n.scale || 1));
+        drawName(n.name, n.px, n.py - 26 * (n.scale || 1));
       }
     }));
     followers.forEach(f => drawables.push({
@@ -598,7 +616,7 @@ DH.scenes.overworld = (function () {
     if (promptTarget && promptTarget.kind === 'npc') {
       const n = promptTarget.npc;
       G.alpha(0.5 + Math.sin(G.tick * 0.15) * 0.3, () => {
-        G.text('▾', n.px - cam.x, n.py - cam.y - 34 * (n.scale || 1), { align: 'center', size: 9, color: G.C.gold });
+        G.label('▾', n.px, n.py - 34 * (n.scale || 1), { align: 'center', size: 10, color: G.C.gold });
       });
     }
 
@@ -608,7 +626,7 @@ DH.scenes.overworld = (function () {
     /* weather, then light */
     if (map.rain) G.rain(map.rain, 5);
     if (map.fog) {
-      G.alpha(0.22, () => G.rect(0, 0, G.VW, G.VH, '#7a8a7a', true));
+      G.alpha(0.22, () => G.rect(0, 0, G.viewW(), G.viewH(), '#7a8a7a', true));
     }
     const dark = map.indoor ? (map.baseDark || 0) : Math.max(map.baseDark || 0, DH.game.darkness());
     if (dark > 0.02) {
@@ -636,13 +654,13 @@ DH.scenes.overworld = (function () {
     if (leg.p === 'rune') return { i: x + y };
     return null;
   }
-  function drawName(name, x, y) {
+  function drawName(name, wx, wy) {
     if (!name) return;
-    G.alpha(0.85, () => G.text(name, x, y, { align: 'center', size: 7, color: G.C.inkDim }));
+    G.alpha(0.85, () => G.label(name, wx, wy, { align: 'center', size: 8, color: G.C.inkDim }));
   }
 
   return {
-    name: 'overworld', enter, exit, resume, pause, update, draw,
+    name: 'overworld', get zoom() { return worldZoom; }, enter, exit, resume, pause, update, draw,
     loadMap, updateHud, refreshPlayerLook,
     get player() { return player; },
     get map() { return map; },

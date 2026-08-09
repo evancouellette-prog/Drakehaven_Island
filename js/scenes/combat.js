@@ -15,11 +15,13 @@ DH.scenes.combat = (function () {
   let busy = false, finished = false, onDone = null, encounter = null;
   let log = [], animQueue = [];
   let bannerShown = false, resolved = false;
+  /* guards a turn from being advanced twice — by a key press racing the AI, say */
+  let advancing = false;
 
   /* =============== entry =============== */
   function enter(arg) {
     encounter = arg || {};
-    finished = false; busy = false; round = 1; turn = 0; mode = null; log = [];
+    finished = false; busy = false; advancing = false; round = 1; turn = 0; mode = null; log = [];
     bannerShown = false; resolved = false;
     onDone = encounter.onDone || null;
     buildArena(encounter.arena || 'town_street');
@@ -74,13 +76,18 @@ DH.scenes.combat = (function () {
   }
 
   /* =============== unit construction =============== */
+  /* isPC  — the one character the player drives with the action bar.
+     isCharacter — anyone using the full character rules (the player and the five
+     companions), as opposed to a monster stat block. Your companions are other
+     people's characters: they fight alongside you, they do not wait for orders. */
   function unitFromChar(ch, side) {
     return {
       ch: ch, side: side, name: ch.name,
       x: 0, y: 0, px: 0, py: 0,
       spec: C.visualFor(ch), scale: ch.scale || 1,
       weapon: C.weaponArt(ch),
-      isPC: true, dead: false,
+      isPC: !!ch.isPlayer, isCharacter: true, dead: false,
+      ai: ch.ai || { prefer: 'melee', focus: 'nearest' },
       eco: freshEconomy(ch), used: {},
       facing: side === 'party' ? 'right' : 'left'
     };
@@ -179,8 +186,8 @@ DH.scenes.combat = (function () {
   function rollInitiative() {
     units.forEach(u => {
       const ch = u.ch;
-      const bonus = u.isPC ? (ch.initBonus != null ? ch.initBonus : C.abMod(ch, 'dex')) : (ch.initBonus || 0);
-      const adv = u.isPC && C.hasEffect(ch, 'adv_initiative');
+      const bonus = u.isCharacter ? (ch.initBonus != null ? ch.initBonus : C.abMod(ch, 'dex')) : (ch.initBonus || 0);
+      const adv = u.isCharacter && C.hasEffect(ch, 'adv_initiative');
       const r = DH.dice.d20({ mod: bonus, adv: adv });
       u.init = r.total;
       u.initRoll = r.natural;
@@ -225,6 +232,7 @@ DH.scenes.combat = (function () {
 
   /* =============== turn flow =============== */
   function beginTurn() {
+    advancing = false;
     if (finished) return;
     const u = active();
     if (!u) return;
@@ -260,6 +268,7 @@ DH.scenes.combat = (function () {
   }
 
   function endTurn() {
+    if (advancing || finished) return;
     const u = active();
     if (!u) return;
     /* concentration and conditions tick down at the end of the turn */
@@ -269,7 +278,8 @@ DH.scenes.combat = (function () {
     nextTurn();
   }
   function nextTurn() {
-    if (finished) return;
+    if (finished || advancing) return;
+    advancing = true;
     mode = null; reach = null;
     turn++;
     if (turn % order.length === 0) {
@@ -361,12 +371,12 @@ DH.scenes.combat = (function () {
     if (res.lostConcentration) logLine(target.name + ' loses concentration.', '');
     if (res.dropped) {
       logLine(target.name + ' drops!', 'hit');
-      if (!target.isPC) { target.dead = true; onUnitDown(target); }
+      if (!target.isCharacter) { target.dead = true; onUnitDown(target); }
     }
     if (res.killed) { target.dead = true; logLine(target.name + ' is killed.', 'crit'); onUnitDown(target); }
-    if (target.isPC && target.ch.dead) { target.dead = true; onUnitDown(target); }
+    if (target.isCharacter && target.ch.dead) { target.dead = true; onUnitDown(target); }
     /* monsters simply die at 0 */
-    if (!target.isPC && target.ch.hp <= 0 && !target.dead) { target.dead = true; onUnitDown(target); }
+    if (!target.isCharacter && target.ch.hp <= 0 && !target.dead) { target.dead = true; onUnitDown(target); }
     checkEnd();
     return res;
   }
@@ -421,7 +431,7 @@ DH.scenes.combat = (function () {
     opts = opts || {};
     const a = attacker.ch;
     const mods = attackModifiers(attacker, target, { ranged: atkDef.ranged });
-    const critAt = attacker.isPC ? C.critRange(a) : 20;
+    const critAt = attacker.isCharacter ? C.critRange(a) : 20;
     const r = DH.dice.d20({ mod: atkDef.atk, adv: mods.adv, dis: mods.dis, dc: totalAC(target) });
     const isCrit = r.natural >= critAt;
     attacker.facing = target.x < attacker.x ? 'left' : 'right';
@@ -437,14 +447,14 @@ DH.scenes.combat = (function () {
     /* damage */
     let total = 0;
     const parts = [];
-    const gwf = attacker.isPC && C.hasEffect(a, 'style:great_weapon') &&
+    const gwf = attacker.isCharacter && C.hasEffect(a, 'style:great_weapon') &&
       (atkDef.props || []).indexOf('two_handed') >= 0;
     const dmgRoll = DH.dice.roll(atkDef.dmg, { crit: isCrit, rerollBelow: gwf ? 2 : 0 });
     total += dmgRoll.total + (atkDef.dmgMod || 0);
     parts.push(atkDef.dmg + (atkDef.dmgMod ? U.plus(atkDef.dmgMod) : ''));
 
     /* extra weapon die on a crit for savage attacks / brutal critical */
-    if (isCrit && attacker.isPC) {
+    if (isCrit && attacker.isCharacter) {
       const extraDice = (C.hasEffect(a, 'savage_crit') ? 1 : 0) + C.effectValue(a, 'brutal_crit');
       for (let i = 0; i < extraDice; i++) {
         const die = /d(\d+)/.exec(atkDef.dmg);
@@ -452,7 +462,7 @@ DH.scenes.combat = (function () {
       }
     }
     /* riders that apply to any hit */
-    if (attacker.isPC) {
+    if (attacker.isCharacter) {
       C.bonusDamage(a).forEach(b => {
         if (b.unarmedOnly && atkDef.id !== 'unarmed' && atkDef.id !== 'blue_brass_knuckles') return;
         if (b.strOnly && atkDef.ranged) return;
@@ -472,7 +482,7 @@ DH.scenes.combat = (function () {
       total += rr.total; parts.push(dice + ' to the wounded leg');
     }
     /* sneak attack */
-    if (attacker.isPC && C.sneakAttackDice(a) > 0 && !attacker.usedSneak &&
+    if (attacker.isCharacter && C.sneakAttackDice(a) > 0 && !attacker.usedSneak &&
       ((atkDef.props || []).indexOf('finesse') >= 0 || atkDef.ranged)) {
       const canSneak = mods.adv || alliesOf(attacker).some(al => U.gdist(al.x, al.y, target.x, target.y) <= 1);
       if (canSneak) {
@@ -533,10 +543,10 @@ DH.scenes.combat = (function () {
       }
     }
     /* brass knuckles knock people back */
-    if (attacker.isPC && C.hasEffect(a, 'unarmed_push:10') && atkDef.id === 'unarmed') {
+    if (attacker.isCharacter && C.hasEffect(a, 'unarmed_push:10') && atkDef.id === 'unarmed') {
       pushUnit(target, attacker, 2);
     }
-    if (attacker.isPC && C.hasEffect(a, 'hammering_horns') && attacker.eco.bonus > 0 && atkDef.id === 'horns') {
+    if (attacker.isCharacter && C.hasEffect(a, 'hammering_horns') && attacker.eco.bonus > 0 && atkDef.id === 'horns') {
       /* offered as a bonus action rather than automatic */
     }
     return { hit: true, crit: isCrit, roll: r, dmg: total };
@@ -545,7 +555,7 @@ DH.scenes.combat = (function () {
   function saveAgainst(target, ability, dc) {
     const ch = target.ch;
     let mod;
-    if (target.isPC) mod = C.saveMod(ch, ability);
+    if (target.isCharacter) mod = C.saveMod(ch, ability);
     else {
       mod = (ch.monsterSaves && ch.monsterSaves[ability] != null)
         ? ch.monsterSaves[ability] : C.mod(ch.abilities[ability]);
@@ -553,7 +563,7 @@ DH.scenes.combat = (function () {
     let adv = false, dis = false;
     if (C.hasCondition(ch, 'restrained') && ability === 'dex') dis = true;
     if (C.hasCondition(ch, 'paralyzed') || C.hasCondition(ch, 'stunned')) { if (ability === 'dex' || ability === 'str') dis = true; }
-    if (target.isPC) {
+    if (target.isCharacter) {
       if (ability === 'con' && C.hasEffect(ch, 'adv_vs_poison')) adv = true;
       if (ability === 'dex' && C.hasEffect(ch, 'danger_sense')) adv = true;
     }
@@ -619,10 +629,10 @@ DH.scenes.combat = (function () {
           if (def.half) dmg = Math.floor(dmg / 2);
           else dmg = 0;
           /* Evasion turns a successful DEX save into no damage at all */
-          if (def.save.ab === 'dex' && u.isPC && C.hasEffect(u.ch, 'evasion')) dmg = 0;
+          if (def.save.ab === 'dex' && u.isCharacter && C.hasEffect(u.ch, 'evasion')) dmg = 0;
           logLine(u.name + ' saves (' + DH.dice.fmt(sv) + ')' + (dmg ? ' but takes ' + dmg : ''));
         } else {
-          if (def.save.ab === 'dex' && u.isPC && C.hasEffect(u.ch, 'evasion')) dmg = Math.floor(dmg / 2);
+          if (def.save.ab === 'dex' && u.isCharacter && C.hasEffect(u.ch, 'evasion')) dmg = Math.floor(dmg / 2);
           logLine(u.name + ' fails (' + DH.dice.fmt(sv) + ') and takes ' + dmg + ' ' + (def.type || ''), 'hit');
           if (def.cond) C.addCondition(u.ch, def.cond, def.dur || 1);
         }
@@ -832,7 +842,7 @@ DH.scenes.combat = (function () {
     bar.innerHTML = '';
     if (!u) return;
     const top = DH.ui.add(bar, 'div', 'top');
-    DH.ui.add(top, 'div', 'nm', DH.ui.esc(u.name) + (u.isPC ? '' : ' (enemy)'));
+    DH.ui.add(top, 'div', 'nm', DH.ui.esc(u.name) + (u.isPC ? '' : u.side === 'party' ? ' (companion)' : ' (enemy)'));
     const pips = DH.ui.add(top, 'div', 'pips2');
     const eco = u.eco;
     const mk = (lbl, on, cls) => {
@@ -1180,7 +1190,9 @@ DH.scenes.combat = (function () {
       else if (m.kind === 'item') { u.eco.action--; applyConsumable(u, m.item.id); C.removeItem(u.ch, m.item.id, 1); logLine(u.name + ' drinks ' + m.item.name + '.', 'heal'); }
       else if (m.kind === 'coat') { u.eco.bonus--; u.coating = Object.assign({}, m.item.use.coat); C.removeItem(u.ch, m.item.id, 1); logLine(u.name + ' coats a blade with ' + m.item.name + '.'); }
     } catch (e) { console.error(e); }
-    if (!(m.times > 1)) mode = null;
+    /* Extra Attack: keep the weapon selected so the second swing is one click */
+    const keepSelected = m.kind === 'attack' && u.eco.attacksLeft > 0 && !u.dead;
+    if (!(m.times > 1) && !keepSelected) mode = null;
     busy = false;
     reach = computeReach(u);
     refreshUI();
@@ -1511,7 +1523,7 @@ DH.scenes.combat = (function () {
       busy = false; endTurn(); return;
     }
 
-    if (u.isPC) { await companionTurn(u, target); busy = false; endTurn(); return; }
+    if (u.isCharacter) { await companionTurn(u, target); busy = false; endTurn(); return; }
 
     /* choose an action: weighted, honouring recharge and range */
     const acts = (ch.npcActions || []).filter(a => {
@@ -1792,7 +1804,8 @@ DH.scenes.combat = (function () {
     if (inBounds(gx, gy)) { hoverTile = { x: gx, y: gy }; hoverUnit = unitAt(gx, gy); }
     if (!busy && !finished && !DH.ui.modalOpen() && !DH.ui.dlgVisible()) {
       if (m.clicked) handleClick();
-      if (DH.input.tapped('endturn')) endTurn();
+      /* only your own turn is yours to end */
+      if (DH.input.tapped('endturn')) { const u = active(); if (u && u.isPC) endTurn(); }
       if (DH.input.tapped('pod')) { const u = active(); if (u && u.isPC) { usePod(u); refreshUI(); } }
       if (DH.input.tapped('cancel')) { mode = null; refreshUI(); }
     }
@@ -1875,7 +1888,7 @@ DH.scenes.combat = (function () {
       }
       const opts = {
         scale: v.scale, facing: v.facing, moving: false,
-        weapon: v.isPC ? v.weapon : null, attacking: v.attackAnim > 0,
+        weapon: v.weapon || null, attacking: v.attackAnim > 0,
         phase: v.x * 0.7 + v.y * 0.3, glowEyes: v.spec && v.spec.eyeGlow
       };
       /* creature painters work in world space; the combat camera sits at 0,0 */
@@ -1884,16 +1897,23 @@ DH.scenes.combat = (function () {
         G.alpha(0.3 + Math.sin(G.tick * 0.2) * 0.15, () => G.ellipseS(v.px, v.py - 16, 15, 19, '#6fd0ff', 2, true));
       }
       if (v.ch.dying) G.text('✚', v.px, v.py - 40, { align: 'center', size: 10, color: '#d4574a' });
-      /* health bar and name */
+      /* Health bars for everyone, but only name the unit that matters right now —
+         six figures standing shoulder to shoulder would otherwise be a wall of
+         overlapping text. */
       G.healthBar(v.px, v.py - 34 * (v.scale || 1) - 6, 24, v.ch.hp / v.ch.hpMax,
         v.side === 'foe' ? '#d4574a' : '#7fbf5f');
-      G.alpha(0.9, () => G.text(v.name, v.px, v.py - 34 * (v.scale || 1) - 16, {
-        align: 'center', size: 7, color: v.side === 'foe' ? '#e9a49c' : '#c8e6b8'
-      }));
+      if (active_ || v === hoverUnit) {
+        G.alpha(0.95, () => G.text(v.name, v.px, v.py - 34 * (v.scale || 1) - 16, {
+          align: 'center', size: 7, color: v.side === 'foe' ? '#e9a49c' : '#c8e6b8'
+        }));
+      }
       const conds = (v.ch.conditions || []).filter(c => c.id !== 'concentrating');
-      if (conds.length) {
+      if (conds.length && (active_ || v === hoverUnit)) {
         G.alpha(0.9, () => G.text(conds.map(c => (DH.CONDITION_INFO[c.id] || { name: c.id }).name).join(' '),
           v.px, v.py + 2, { align: 'center', size: 6, color: '#d8c0ff' }));
+      } else if (conds.length) {
+        /* a small mark so you can still see somebody is affected */
+        G.alpha(0.85, () => G.rect(v.px + 8, v.py - 34 * (v.scale || 1) - 6, 3, 3, '#d8c0ff'));
       }
     });
 
@@ -1903,7 +1923,7 @@ DH.scenes.combat = (function () {
     if (arena.rain) G.rain(arena.rain, 5);
     if (arena.fog) G.alpha(0.2, () => G.rect(0, 0, G.VW, G.VH, '#7a8a7a', true));
     if (arena.dark) {
-      const lights = units.filter(v => !v.dead).map(v => ({ x: v.px, y: v.py - 12, r: 70 }));
+      const lights = units.filter(v => !v.dead).map(v => ({ x: v.px, y: v.py - 12, r: 92 }));
       (arena.props || []).forEach(p => { if (p.light) lights.push({ x: ox + p.x * CELL + 12, y: oy + p.y * CELL + 12, r: p.light, flicker: true }); });
       G.lighting(arena.dark, lights);
     }

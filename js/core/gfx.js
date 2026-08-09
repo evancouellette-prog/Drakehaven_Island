@@ -11,6 +11,10 @@ DH.gfx = (function () {
   const CELL = 24;                   // combat grid cell
 
   let cv = null, ctx = null, scale = 1;
+  /* World zoom: the overworld magnifies so its rooms fill the frame, while
+     combat draws one-to-one. Everything after begin() works in this zoomed
+     space, so viewW()/viewH() are the visible size in world pixels. */
+  let zoom = 1;
   const cam = { x: 0, y: 0, tx: 0, ty: 0, shake: 0, shakeT: 0 };
   let tick = 0;
   const particles = [];
@@ -57,8 +61,13 @@ DH.gfx = (function () {
     cv.style.height = Math.floor(VH * scale) + 'px';
   }
 
-  /* Convert a page/mouse virtual coord into world coords. */
-  function toWorld(vx, vy) { return { x: vx + cam.x, y: vy + cam.y }; }
+  function setZoom(z) { zoom = z || 1; }
+  function getZoom() { return zoom; }
+  const viewW = () => VW / zoom;
+  const viewH = () => VH / zoom;
+
+  /* Convert a canvas coord (0..VW) into world coords. */
+  function toWorld(vx, vy) { return { x: vx / zoom + cam.x, y: vy / zoom + cam.y }; }
 
   function begin() {
     tick++;
@@ -70,15 +79,18 @@ DH.gfx = (function () {
       const a = cam.shake * (cam.shakeT / 12);
       ctx.translate(Math.round((Math.random() - .5) * a), Math.round((Math.random() - .5) * a));
     }
+    if (zoom !== 1) ctx.scale(zoom, zoom);
   }
   function end() { ctx.setTransform(1, 0, 0, 1, 0, 0); }
   function shake(amt) { cam.shake = amt; cam.shakeT = 12; }
 
   function camFollow(wx, wy, bounds, lerpAmt) {
-    cam.tx = wx - VW / 2; cam.ty = wy - VH / 2;
+    const vw = viewW(), vh = viewH();
+    cam.tx = wx - vw / 2; cam.ty = wy - vh / 2;
     if (bounds) {
-      cam.tx = U.clamp(cam.tx, 0, Math.max(0, bounds.w - VW));
-      cam.ty = U.clamp(cam.ty, 0, Math.max(0, bounds.h - VH));
+      /* a room smaller than the frame is centred rather than shoved into a corner */
+      cam.tx = bounds.w <= vw ? -(vw - bounds.w) / 2 : U.clamp(cam.tx, 0, bounds.w - vw);
+      cam.ty = bounds.h <= vh ? -(vh - bounds.h) / 2 : U.clamp(cam.ty, 0, bounds.h - vh);
     }
     const k = lerpAmt == null ? 0.16 : lerpAmt;
     cam.x += (cam.tx - cam.x) * k; cam.y += (cam.ty - cam.y) * k;
@@ -133,6 +145,12 @@ DH.gfx = (function () {
     if (o.shadow !== false) { ctx.fillStyle = o.shadowCol || '#000'; ctx.fillText(str, px + 1, py + 1); }
     ctx.fillStyle = o.color || C.ink;
     ctx.fillText(str, px, py);
+  }
+  /* A label pinned to a world position that stays the same size on screen no
+     matter how far the world is zoomed in. */
+  function label(str, wx, wy, o) {
+    o = o || {};
+    text(str, wx, wy, Object.assign({}, o, { raw: false, size: (o.size || 8) / zoom }));
   }
   function measure(str, size) {
     ctx.font = (size || 8) + 'px ui-monospace, monospace';
@@ -733,33 +751,45 @@ DH.gfx = (function () {
   function clearFloaters() { floaters.length = 0; }
 
   /* ================= OVERLAYS ================= */
+  /* Drops are scattered by a stable hash rather than an arithmetic sequence,
+     otherwise they line up into visible diagonal bands. */
   function rain(intensity, windX) {
-    const n = Math.floor(60 * (intensity || 1));
-    ctx.strokeStyle = 'rgba(180,210,235,.5)'; ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      const seedX = (i * 97 + tick * 6 * (1 + i % 3)) % (VW + 80) - 40;
-      const y = (i * 53 + tick * (11 + i % 5)) % (VH + 40) - 20;
-      const wx = windX == null ? 3 : windX;
-      ctx.moveTo(seedX, y); ctx.lineTo(seedX - wx, y + 10);
+    const n = Math.floor(90 * (intensity || 1));
+    const wind = windX == null ? 3 : windX;
+    ctx.lineWidth = 1;
+    for (let pass = 0; pass < 2; pass++) {
+      /* two passes: a faint far layer and a brighter near one */
+      ctx.strokeStyle = pass ? 'rgba(198,224,245,.55)' : 'rgba(150,180,210,.28)';
+      ctx.beginPath();
+      const count = pass ? Math.floor(n * 0.45) : Math.floor(n * 0.55);
+      for (let i = 0; i < count; i++) {
+        const k = i + pass * 500;
+        const x0 = hash(k, 7, 3) * (viewW() + 90) - 45;
+        const speed = (pass ? 15 : 9) + hash(k, 13, 5) * 9;
+        const len = pass ? 11 : 7;
+        const y = mod2(hash(k, 3, 9) * (viewH() + 60) + tick * speed, viewH() + 60) - 30;
+        const w = wind * (pass ? 1 : 0.7);
+        ctx.moveTo(x0, y); ctx.lineTo(x0 - w, y + len);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
   }
+  function mod2(n, m) { return ((n % m) + m) % m; }
   function snowfall() {
     for (let i = 0; i < 40; i++) {
-      const x = (i * 131 + Math.sin(tick * .02 + i) * 20 + tick * .6) % VW;
-      const y = (i * 71 + tick * (1.2 + i % 3 * .4)) % VH;
+      const x = (i * 131 + Math.sin(tick * .02 + i) * 20 + tick * .6) % viewW();
+      const y = (i * 71 + tick * (1.2 + i % 3 * .4)) % viewH();
       alpha(.7, () => rect(x, y, 2, 2, C.snow, true));
     }
   }
-  function tintOverlay(col) { rect(0, 0, VW, VH, col, true); }
+  function tintOverlay(col) { rect(0, 0, viewW(), viewH(), col, true); }
   /* Night lighting with light sources: [{x,y,r,col}] in world space */
   function lighting(darkness, lights) {
     if (darkness <= 0) return;
     ctx.save();
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = 'rgba(8,14,30,' + darkness + ')';
-    ctx.fillRect(0, 0, VW, VH);
+    ctx.fillRect(0, 0, viewW(), viewH());
     if (lights && lights.length) {
       ctx.globalCompositeOperation = 'destination-out';
       for (const L of lights) {
@@ -776,13 +806,14 @@ DH.gfx = (function () {
     ctx.restore();
   }
   function vignette(strength) {
-    const g = ctx.createRadialGradient(VW / 2, VH / 2, VH * .35, VW / 2, VH / 2, VH * .85);
+    const vw = viewW(), vh = viewH();
+    const g = ctx.createRadialGradient(vw / 2, vh / 2, vh * .35, vw / 2, vh / 2, vh * .85);
     g.addColorStop(0, 'rgba(0,0,0,0)');
     g.addColorStop(1, 'rgba(0,0,0,' + (strength || .5) + ')');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
   }
   /* Lightning flash — call with 0..1 */
-  function flash(a) { if (a > 0) rect(0, 0, VW, VH, 'rgba(200,225,255,' + a + ')', true); }
+  function flash(a) { if (a > 0) rect(0, 0, viewW(), viewH(), 'rgba(200,225,255,' + a + ')', true); }
 
   /* Health bar above a creature */
   function healthBar(cx, y, w, frac, col) {
@@ -795,7 +826,8 @@ DH.gfx = (function () {
   return {
     VW, VH, TILE, CELL, C,
     init, resize, begin, end, shake, camFollow, camSnap, cam, toWorld,
-    rect, stroke, ellipse, ellipseS, poly, lineTo, text, measure, alpha,
+    setZoom, getZoom, viewW, viewH,
+    rect, stroke, ellipse, ellipseS, poly, lineTo, text, label, measure, alpha,
     drawTile, drawProp, TILES, PROPS,
     creature, humanoid, dragon, drawWeapon,
     emit, updateParticles, clearParticles, floater, updateFloaters, clearFloaters,

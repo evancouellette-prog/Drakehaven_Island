@@ -7,6 +7,9 @@ DH.scenes.charcreate = (function () {
   const U = DH.util, C = DH.char;
 
   const STEPS = ['Race', 'Class', 'Subclass', 'Abilities', 'Background', 'Skills', 'Look', 'Name', 'Review'];
+  /* You are one of five adventurers already posted together, so you begin as
+     their peer rather than three levels behind them. */
+  const START_LEVEL = 3;
   const POINT_BUY_COST = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 };
   const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
 
@@ -68,7 +71,7 @@ DH.scenes.charcreate = (function () {
     if (bg()) { ch.backgroundId = draft.backgroundId; ch.backgroundName = bg().name; }
     ch.base = Object.assign({}, draft.base);
     ch.flexBonus = Object.assign({}, draft.flexBonus);
-    ch.level = 1;
+    ch.level = START_LEVEL;
     ch.skills = draft.skills.slice();
     if (bg()) (bg().skills || []).forEach(s => { if (ch.skills.indexOf(s) < 0) ch.skills.push(s); });
     ch.fightingStyle = draft.fightingStyle;
@@ -101,10 +104,10 @@ DH.scenes.charcreate = (function () {
     }
     return true;
   }
-  /* Subclasses that begin at level 1 are chosen now; later ones are skipped. */
+  /* Every class has its subclass by 3rd level, so it is always part of creation. */
   function subclassNeededNow() {
     const c = cls(); if (!c) return false;
-    return C.subclassLevel(c) === 1;
+    return C.subclassLevel(c) <= START_LEVEL;
   }
   function abilitiesValid() {
     if (draft.method === 'pointbuy') return draft.pool === 0 || draft.pool >= 0;
@@ -166,7 +169,7 @@ DH.scenes.charcreate = (function () {
     const next = DH.ui.btn(step === STEPS.length - 1 ? 'Begin the Story  ▸' : 'Next  ▸', 'primary', () => {
       if (step === STEPS.length - 1) { finish(); return; }
       step++;
-      /* skip the subclass step when it is not chosen at level 1 */
+      /* skip the subclass step for any class that has not got one by now */
       if (STEPS[step] === 'Subclass' && !subclassNeededNow()) step++;
       render();
     });
@@ -320,19 +323,25 @@ DH.scenes.charcreate = (function () {
     if (c.caster) bits.push('Casts with ' + c.caster.ability.toUpperCase());
     tags.innerHTML = bits.map(b => '<span class="tag">' + DH.ui.esc(b) + '</span>').join('');
 
-    DH.ui.add(mid, 'div', 'body-h2', 'What You Get at First Level');
-    (c.features[1] || []).forEach(f => {
-      const e = DH.ui.add(mid, 'div', 'feat');
-      e.innerHTML = '<b>' + DH.ui.esc(f.name) + '</b><p>' + DH.ui.esc(f.desc) + '</p>';
-    });
+    DH.ui.add(mid, 'div', 'body-h2', 'What You Have by Third Level');
+    for (let L = 1; L <= START_LEVEL; L++) {
+      (c.features[L] || []).forEach(f => {
+        const e = DH.ui.add(mid, 'div', 'feat');
+        e.innerHTML = '<b>' + DH.ui.esc(f.name) + '</b><p>' + DH.ui.esc(f.desc) + '</p>';
+      });
+    }
     DH.ui.add(mid, 'div', 'body-h2', 'And Later');
-    for (let L = 2; L <= 10; L++) {
+    for (let L = START_LEVEL + 1; L <= 10; L++) {
       (c.features[L] || []).forEach(f => {
         const e = DH.ui.add(mid, 'div', 'kv');
         e.innerHTML = '<span>Level ' + L + '</span><span>' + DH.ui.esc(f.name) + '</span>';
       });
     }
-    if (c.features[1] && (c.features[1] || []).some(f => (f.effects || []).indexOf('fighting_style') >= 0)) {
+    let stylesGranted = false;
+    for (let L = 1; L <= START_LEVEL; L++) {
+      if ((c.features[L] || []).some(f => (f.effects || []).indexOf('fighting_style') >= 0)) stylesGranted = true;
+    }
+    if (stylesGranted) {
       DH.ui.add(mid, 'div', 'body-h2', 'Fighting Style');
       DH.FIGHTING_STYLES.forEach(fs => {
         const on = draft.fightingStyle === fs.id;
@@ -359,8 +368,8 @@ DH.scenes.charcreate = (function () {
     const at = C.subclassLevel(c);
     if (!s) {
       DH.ui.add(mid, 'h1', '', 'Choose a Path');
-      DH.ui.add(mid, 'div', 'prose', c.name + 's choose their speciality at level ' + at + '.' +
-        (at > 1 ? ' You can decide now and it will be waiting for you.' : ''));
+      DH.ui.add(mid, 'div', 'prose', c.name + 's choose their speciality at level ' + at +
+        ', and you are starting at ' + START_LEVEL + '.');
       return;
     }
     DH.ui.add(mid, 'h1', '', s.name);
@@ -598,7 +607,7 @@ DH.scenes.charcreate = (function () {
     });
     /* rogue and bard expertise */
     const c = cls();
-    if (c && (c.id === 'rogue')) {
+    if (c && (c.id === 'rogue' || c.id === 'bard')) {
       DH.ui.add(mid, 'div', 'body-h2', 'Expertise — double proficiency in two');
       const all = draft.skills.concat(b ? b.skills : []);
       all.forEach(s => {
@@ -699,7 +708,7 @@ DH.scenes.charcreate = (function () {
   function stepReview(list, mid) {
     const ch = preview();
     DH.ui.add(mid, 'h1', '', ch.name);
-    DH.ui.add(mid, 'div', 'sub', ch.raceName + ' ' + ch.className +
+    DH.ui.add(mid, 'div', 'sub', 'Level ' + ch.level + ' ' + ch.raceName + ' ' + ch.className +
       (sub() ? ' — ' + sub().name : '') + ' · ' + ch.backgroundName);
 
     const grid = DH.ui.add(mid, 'div', 'statgrid');
@@ -712,7 +721,7 @@ DH.scenes.charcreate = (function () {
     stat('SPEED', ch.speed + ' ft');
     stat('PROFICIENCY', U.plus(ch.prof));
     stat('INITIATIVE', U.plus(ch.initBonus));
-    stat('GOLD', '~' + (bg() ? bg().gold + 12 : 20));
+    stat('LEVEL', ch.level);
 
     DH.ui.add(mid, 'div', 'body-h2', 'Abilities');
     DH.ABILITIES.forEach(ab => {
@@ -765,7 +774,8 @@ DH.scenes.charcreate = (function () {
 
     const nm = DH.ui.add(side, 'div', 'body-h2 who-name', draft.name || 'Unnamed');
     DH.ui.add(side, 'div', 'small dim',
-      (race() ? race().name : '—') + ' ' + (cls() ? cls().name : '') + (sub() ? ' · ' + sub().name : ''));
+      (race() ? race().name : '—') + ' ' + (cls() ? cls().name : '') +
+      (cls() ? ' ' + START_LEVEL : '') + (sub() ? ' · ' + sub().name : ''));
     DH.ui.add(side, 'div', 'hr');
 
     const grid = DH.ui.add(side, 'div', 'statgrid');
@@ -826,7 +836,7 @@ DH.scenes.charcreate = (function () {
       expertise: draft.expertise,
       appearance: draft.appearance,
       fightingStyle: draft.fightingStyle,
-      level: 1
+      level: START_LEVEL
     });
     ch.flexBonus = Object.assign({}, draft.flexBonus);
     C.derive(ch);

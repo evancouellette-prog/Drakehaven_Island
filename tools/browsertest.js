@@ -146,7 +146,7 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
   await clickText('Begin the Story');
   await page.waitForTimeout(1200);
   /* skip the chapter card and read through the opening narration */
-  for (let i = 0; i < 6; i++) { await page.keyboard.press('Space'); await page.waitForTimeout(500); }
+  for (let i = 0; i < 6; i++) { await page.keyboard.press('Space'); await page.waitForTimeout(300); }
   ok(await page.locator('#dlg').isVisible(), 'dialogue is running');
   await shot('prologue');
 
@@ -155,7 +155,7 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
   while (advanced < 40) {
     if (await page.locator('#dlg .ch').first().isVisible().catch(() => false)) break;
     await page.keyboard.press('Space');
-    await page.waitForTimeout(320);
+    await page.waitForTimeout(190);
     advanced++;
   }
   ok(await page.locator('#dlg .ch').first().isVisible(), 'a dialogue choice was offered');
@@ -171,8 +171,8 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
   await page.waitForTimeout(400);
   for (let i = 0; i < 60; i++) {
     const choice = page.locator('#dlg .ch').first();
-    if (await choice.isVisible().catch(() => false)) { await choice.click(); await page.waitForTimeout(350); }
-    else { await page.keyboard.press('Space'); await page.waitForTimeout(240); }
+    if (await choice.isVisible().catch(() => false)) { await choice.click(); await page.waitForTimeout(230); }
+    else { await page.keyboard.press('Space'); await page.waitForTimeout(160); }
     const st = await page.evaluate(() => DH.game.flag('called_on_deck'));
     if (st) break;
   }
@@ -205,12 +205,12 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
   console.log('\n=== the sea hags ===');
   await page.evaluate(() => DH.scenes.script.run('act0_deck'));
   await page.waitForTimeout(700);
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < 80; i++) {
     if (await page.locator('#actionbar').isVisible().catch(() => false)) break;
     const choice = page.locator('#dlg .ch').first();
     if (await choice.isVisible().catch(() => false)) await choice.click();
     else await page.keyboard.press('Space');
-    await page.waitForTimeout(260);
+    await page.waitForTimeout(170);
     /* the dice popup needs its Continue */
     const cont = page.locator('#roller button').first();
     if (await cont.isVisible().catch(() => false)) { await cont.click(); await page.waitForTimeout(300); }
@@ -228,20 +228,43 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
   /* verify the economy pips and the Ending Action rule are shown */
   const ecoLabels = await page.evaluate(() => Array.from(document.querySelectorAll('#actionbar .eco')).map(e => e.textContent));
   ok(ecoLabels.join(',') === 'ACTION,BONUS,REACTION,ENDING', 'the turn economy shows all four slots');
-  const endingDisabled = await page.evaluate(() => {
-    const b = Array.from(document.querySelectorAll('#abtns button')).find(x => /Ending Action/.test(x.textContent));
-    return b ? b.disabled : null;
-  });
-  ok(endingDisabled === true, 'the Ending Action is locked until the rest of the turn is spent');
+
+  /* the action buttons only exist on the player's own turn — companions act for
+     themselves — so wait for our initiative slot before checking them */
+  /* the AI advances its own turns, so simply wait for our slot to come round */
+  let mine = false;
+  for (let i = 0; i < 60; i++) {
+    const inf = await page.evaluate(() => {
+      const c = DH.game.current();
+      return c && c.name === 'combat' ? DH.scenes.combat.inspect() : null;
+    });
+    if (!inf) break;
+    if (inf.activeIsPC) { mine = true; break; }
+    await page.waitForTimeout(250);
+  }
+  ok(mine, 'the player gets their own turn in the initiative order');
+  if (mine) {
+    const btns = await page.evaluate(() => Array.from(document.querySelectorAll('#abtns button')).map(x => ({ t: x.textContent, d: x.disabled })));
+    const ending = btns.find(b => /Ending Action/.test(b.t));
+    ok(!!ending, 'the Ending Action is offered');
+    ok(ending && ending.d === true, 'the Ending Action is locked until the rest of the turn is spent');
+    ok(btns.some(b => /Pod Shield/.test(b.t)) || !(await page.evaluate(() => !!DH.game.pc().pod)),
+      'the pod shield is offered when you carry a pod');
+    ok(btns.some(b => /Throw an object/.test(b.t)), 'throwing terrain is offered');
+    ok(btns.some(b => /Dip weapon/.test(b.t)), 'dipping a weapon is offered');
+    console.log('        player actions: ' + btns.map(b => b.t).join(' | '));
+  }
 
   /* Play the fight out properly: on our turn, walk into reach, select a weapon
      and click the enemy on the canvas, exactly as a player would. */
   console.log('        playing the fight out…');
 
-  /* virtual canvas coords → real page coords */
+  /* virtual canvas coords → real page coords (the box does not move) */
+  let canvasBox = null;
   async function canvasClick(vx, vy) {
-    const box = await page.locator('#screen').boundingBox();
-    await page.mouse.click(box.x + (vx / 640) * box.width, box.y + (vy / 360) * box.height);
+    if (!canvasBox) canvasBox = await page.locator('#screen').boundingBox();
+    await page.mouse.click(canvasBox.x + (vx / 640) * canvasBox.width,
+      canvasBox.y + (vy / 360) * canvasBox.height);
   }
   async function takeTurn() {
     const info = await page.evaluate(() => DH.scenes.combat.inspect());
@@ -263,7 +286,7 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
         return { vx: i.origin.x + tx * i.origin.cell + i.origin.cell / 2, vy: i.origin.y + ty * i.origin.cell + i.origin.cell / 2 };
       }, [foe.x, foe.y]);
       await canvasClick(step.vx, step.vy);
-      await page.waitForTimeout(700);
+      await page.waitForTimeout(420);
     }
     /* select a weapon and swing */
     const picked = await page.evaluate(() => {
@@ -281,22 +304,22 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
         return { vx: i.origin.x + fx * i.origin.cell + i.origin.cell / 2, vy: i.origin.y + fy * i.origin.cell + i.origin.cell / 2 };
       }, [foe.x, foe.y]);
       await canvasClick(target.vx, target.vy);
-      await page.waitForTimeout(600);
+      await page.waitForTimeout(380);
     }
     return true;
   }
 
   let attacked = 0, shotMid = false;
-  for (let iter = 0; iter < 120; iter++) {
+  for (let iter = 0; iter < 40; iter++) {
     if (!(await page.locator('#actionbar').isVisible().catch(() => false))) break;
     const did = await takeTurn();
     if (did) attacked++;
     if (attacked >= 1 && !shotMid) { await shot('combat-mid'); shotMid = true; }
-    await page.keyboard.press('KeyT');
-    await page.waitForTimeout(450);
+    if (did) await page.keyboard.press('KeyT');
+    await page.waitForTimeout(260);
     /* the dice popup, if a save or a check interrupts */
     const cont = page.locator('#roller button').first();
-    if (await cont.isVisible().catch(() => false)) { await cont.click(); await page.waitForTimeout(250); }
+    if (await cont.isVisible().catch(() => false)) { await cont.click(); await page.waitForTimeout(200); }
   }
   ok(attacked > 0, 'the player took real attacks on the grid (' + attacked + ' turns)');
   await page.waitForTimeout(1800);
@@ -317,11 +340,11 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
   for (let i = 0; i < 30; i++) {
     const choice = page.locator('#dlg .ch').first();
     const cont = page.locator('#roller button').first();
-    if (await cont.isVisible().catch(() => false)) { await cont.click(); await page.waitForTimeout(280); continue; }
-    if (await choice.isVisible().catch(() => false)) { await choice.click(); await page.waitForTimeout(320); continue; }
+    if (await cont.isVisible().catch(() => false)) { await cont.click(); await page.waitForTimeout(200); continue; }
+    if (await choice.isVisible().catch(() => false)) { await choice.click(); await page.waitForTimeout(220); continue; }
     if (await page.evaluate(() => DH.game.flag('invited_to_cabin'))) break;
     await page.keyboard.press('Space');
-    await page.waitForTimeout(240);
+    await page.waitForTimeout(160);
   }
   const necklace = await page.evaluate(() => ({
     invited: DH.game.flag('invited_to_cabin'),
@@ -336,6 +359,9 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
   await page.evaluate(async () => {
     DH.ui.hideDlg();
     DH.game.setFlag('act0_done'); DH.game.setFlag('act1_done'); DH.game.setFlag('act2_started');
+    /* pretend the town's opening scene already played, so this pass can look at
+       the shops and the sheet rather than being pulled into Act Two */
+    DH.game.setFlag('trig_town_square_act2_the_crazy_ones');
     DH.game.issuePods();
     DH.game.pc().gold = 2000;
     await DH.game.travel('town_square', 'start');

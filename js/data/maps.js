@@ -810,7 +810,7 @@ DH.setMapChar = function (m, x, y, c) {
 DH.ARENAS = {
   ship_deck_fight: {
     name: 'The Deck in the Storm', w: 20, h: 13, tile: 'deck', music: 'battle',
-    rain: 1.4, thunder: true, dark: 0.42,
+    rain: 1.4, thunder: true, dark: 0.3,
     walls: [], water: [{ x: 0, y: 0, w: 20, h: 1 }, { x: 0, y: 12, w: 20, h: 1 }],
     props: [
       { x: 3, y: 3, kind: 'barrel' }, { x: 4, y: 8, kind: 'barrel' },
