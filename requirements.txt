@@ -1,0 +1,8 @@
+# Drakehaven Island has no Python dependencies — it has no dependencies at all.
+#
+# This file exists so that a host configured with the default Python build
+# command (`pip install -r requirements.txt`) succeeds instead of failing with
+# "Could not open requirements file". The game is static files; if you want a
+# Python process to serve them, the start command is:
+#
+#     python server.py

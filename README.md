@@ -29,13 +29,24 @@ the site root.
 
 | Host | What to set |
 |---|---|
-| **Render** (static site) | Build Command: *empty* · Publish Directory: `.` · Branch: the branch you deploy from |
-| **Render** (web service) | Build Command: *empty* · Start Command: `node server.js` |
+| **Render** — Static Site *(best: free, no spin-down)* | Build Command: *empty* · Publish Directory: `.` |
+| **Render** — Web Service, Node | Build Command: `npm ci` · Start Command: `npm start` |
+| **Render** — Web Service, Python | Build Command: `pip install -r requirements.txt` · Start Command: `python server.py` |
 | **GitHub Pages** | Settings → Pages → deploy from a branch, folder `/ (root)` |
-| **Anywhere else** | `node server.js`, or copy the files behind any web server |
+| **Anywhere else** | `node server.js`, `python server.py`, or copy the files behind any web server |
 
-`render.yaml` is a Render Blueprint that sets the static-site options for you, and
-`server.js` is a dependency-free static server for hosts that want a start command.
+Because a host may be configured for any of these, the repository carries all of
+them, and each is dependency-free:
+
+- `render.yaml` — a Render Blueprint for a static site
+- `server.js` — static server on `node:http` only
+- `server.py` — static server on the Python standard library only
+- `requirements.txt` — deliberately empty, so a default Python build command
+  (`pip install -r requirements.txt`) succeeds rather than failing on a missing file
+- `package-lock.json` — committed, so a default Node build command (`npm ci`) succeeds
+
+Either publish path works: the repository root serves the multi-file game, and
+`dist/` serves the single-file build.
 
 ---
 
