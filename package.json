@@ -1,0 +1,16 @@
+{
+  "name": "drakehaven-island",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A tactical D&D-style RPG built with no engine, no libraries and no asset files.",
+  "scripts": {
+    "start": "node server.js",
+    "build": "node tools/build-single-file.js",
+    "test": "node tools/smoketest.js",
+    "test:browser": "node tools/browsertest.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {}
+}

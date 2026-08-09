@@ -1,0 +1,25 @@
+# Render Blueprint for Drakehaven Island.
+#
+# The game is plain static files — index.html plus css/ and js/ — so there is
+# nothing to build and nothing to install. Render just needs to serve the
+# repository root.
+#
+# If you already created the service by hand, you do not need this file; set
+# Publish Directory to "." and Build Command to empty, and point the service at
+# the main branch.
+services:
+  - type: web
+    name: drakehaven-island
+    runtime: static
+    branch: main
+    buildCommand: ""
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+    routes:
+      # single page: anything unknown falls back to the game
+      - type: rewrite
+        source: /*
+        destination: /index.html

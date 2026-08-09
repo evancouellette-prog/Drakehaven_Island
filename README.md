@@ -16,6 +16,27 @@ python3 -m http.server 8000   # then visit http://localhost:8000
 
 Click once anywhere before you expect sound — browsers hold audio back until you do.
 
+### Or take one file
+
+`dist/drakehaven-island.html` is the whole game inlined into a single 762 KB file —
+no folder, no server, no network. Download it and double-click. Rebuild it with
+`npm run build`.
+
+### Hosting it
+
+The game is plain static files, so any static host works. The repository root *is*
+the site root.
+
+| Host | What to set |
+|---|---|
+| **Render** (static site) | Build Command: *empty* · Publish Directory: `.` · Branch: the branch you deploy from |
+| **Render** (web service) | Build Command: *empty* · Start Command: `node server.js` |
+| **GitHub Pages** | Settings → Pages → deploy from a branch, folder `/ (root)` |
+| **Anywhere else** | `node server.js`, or copy the files behind any web server |
+
+`render.yaml` is a Render Blueprint that sets the static-site options for you, and
+`server.js` is a dependency-free static server for hosts that want a start command.
+
 ---
 
 ## What it is
