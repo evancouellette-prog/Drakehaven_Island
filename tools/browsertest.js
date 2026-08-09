@@ -487,6 +487,11 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
   console.log('\n=== every map, in the browser ===');
   const mapReport = await page.evaluate(async () => {
     const out = [];
+    /* mark one-shot triggers as seen: this pass is about rendering, and we do not
+       want to teleport through the campaign firing its scenes */
+    Object.keys(DH.MAPS).forEach(id => {
+      (DH.MAPS[id].triggers || []).forEach(t => DH.game.setFlag('trig_' + id + '_' + t.script));
+    });
     for (const id of Object.keys(DH.MAPS)) {
       try {
         DH.scenes.overworld.loadMap(id, 'start');
@@ -513,6 +518,18 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
     return a.props.filter(p => p.cold).length;
   });
   ok(coldBarrels === 3, 'there are three barrels of freezing water (' + coldBarrels + ')');
+  /* wait for our own turn before reading the action bar */
+  let bossTurn = false;
+  for (let i = 0; i < 60; i++) {
+    const inf = await page.evaluate(() => {
+      const c = DH.game.current();
+      return c && c.name === 'combat' ? DH.scenes.combat.inspect() : null;
+    });
+    if (!inf) break;
+    if (inf.activeIsPC && (await page.locator('#abtns button').count()) > 0) { bossTurn = true; break; }
+    await page.waitForTimeout(300);
+  }
+  ok(bossTurn, 'the player gets a turn against the Half-Dragon');
   const dipBtn = await page.evaluate(() => {
     const b = Array.from(document.querySelectorAll('#abtns button')).map(x => x.textContent);
     return b.some(t => /Dip weapon/.test(t)) && b.some(t => /Throw an object/.test(t));

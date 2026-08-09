@@ -30,7 +30,9 @@ Four layers:
    House Rules, Settings and Credits.
 2. **Character creation, staged like Baldur's Gate 3.** Race → Class → Subclass →
    Abilities → Background → Skills → Appearance → Name → Review, with a live portrait
-   and a live stat panel that updates as you choose. **All twelve classes.**
+   and a live stat panel that updates as you choose. **All twelve classes.** You start
+   at 3rd level, the same as the five adventurers you sail in with, so the first fight
+   is yours too rather than something you watch them handle.
 3. **An overworld shaped like Stardew Valley.** Walk freely, with a clock and a day
    counter, sleeping for a long rest, named people who remember you, shops with real
    stock, foraging, mining, fishing, crafting, and a herb plot behind the inn.
@@ -145,14 +147,20 @@ node tools/smoketest.js     # 2,700+ assertions, no browser needed
 node tools/browsertest.js   # drives real Chromium and screenshots a playthrough
 ```
 
-The headless suite builds **every class against every race** (180 combinations),
+The headless suite runs 2,771 assertions. It builds **every class against every race** (180 combinations),
 levels each class to ten, puts every monster on a grid, loads and renders every map
 and arena, walks the whole story graph for dangling references, round-trips a save,
 and checks the campaign's written numbers — the Half-Dragon's 90 hit points and AC
 14, the captain's six ability scores and his 4d6+4 punch, the grey cat's 3 hit
 points, the fly's AC 26, and every price on the potion stand.
 
-`browsertest.js` needs Chromium and `playwright-core`; it creates a character
-through the real creator, plays the prologue, fights the sea hags by clicking the
-grid, buys a potion, plays a dice game, saves, reloads, and asserts there were no
-page errors.
+`browsertest.js` needs Chromium and `playwright-core`. It runs 64 checks against a
+real browser: it creates a character through the actual creator, plays the prologue,
+walks the ship, fights the sea hags by clicking squares and enemies on the canvas,
+collects the hag's necklace when the story resumes, opens the sheet and the pod page,
+buys a potion, plays a hand of Dragon's Hoard, saves, reloads, takes a long rest,
+renders every map, opens the Half-Dragon fight, and asserts there were no page
+errors anywhere in the run. It writes a screenshot at each step to `screenshots/`.
+
+Your companions fight for themselves — they are other people's characters, not
+pets — so a battle plays out around you while you take your own turn.
