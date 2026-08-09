@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Drakehaven Island</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="screen" width="480" height="270"></canvas>
+  <div id="ui"></div>
+  <div id="toasts"></div>
+  <div id="dicelog" class="hidden"></div>
+</div>
+<div id="rotate">Please use a wider window.</div>
+
+<!-- core -->
+<script src="js/core/util.js"></script>
+<script src="js/core/input.js"></script>
+<script src="js/core/audio.js"></script>
+<script src="js/core/gfx.js"></script>
+<script src="js/core/ui.js"></script>
+<script src="js/core/save.js"></script>
+<!-- rules -->
+<script src="js/rules/dice.js"></script>
+<!-- data -->
+<script src="js/data/races.js"></script>
+<script src="js/data/classes.js"></script>
+<script src="js/data/backgrounds.js"></script>
+<script src="js/data/spells.js"></script>
+<script src="js/data/items.js"></script>
+<script src="js/data/monsters.js"></script>
+<script src="js/data/maps.js"></script>
+<script src="js/data/story.js"></script>
+<!-- rules that depend on data -->
+<script src="js/rules/character.js"></script>
+<!-- engine -->
+<script src="js/core/game.js"></script>
+<!-- scenes -->
+<script src="js/scenes/title.js"></script>
+<script src="js/scenes/charcreate.js"></script>
+<script src="js/scenes/overworld.js"></script>
+<script src="js/scenes/combat.js"></script>
+<script src="js/scenes/script.js"></script>
+<script src="js/scenes/shop.js"></script>
+<script src="js/scenes/minigames.js"></script>
+<script src="js/scenes/journal.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
