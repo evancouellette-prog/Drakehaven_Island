@@ -12,8 +12,10 @@ services:
     name: drakehaven-island
     runtime: static
     branch: main
+    # nothing to build: the repository root is already the site
     buildCommand: ""
     staticPublishPath: .
+    # (dist/ also works as a publish path — it holds the single-file build)
     headers:
       - path: /*
         name: Cache-Control

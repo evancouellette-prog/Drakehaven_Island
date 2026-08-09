@@ -48,7 +48,11 @@ out = out.replace('<title>Drakehaven Island</title>',
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
 fs.writeFileSync(OUT, out);
+/* Also write it as dist/index.html, so dist/ is a complete deployable site on
+   its own. A host pointed at either "." or "dist" then serves a working game. */
+fs.writeFileSync(path.join(OUT_DIR, 'index.html'), out);
 
 const kb = (n) => (n / 1024).toFixed(0) + ' KB';
 console.log('inlined ' + inlined + ' files (' + kb(bytes) + ' of source)');
 console.log('wrote   ' + path.relative(ROOT, OUT) + '  ' + kb(out.length));
+console.log('wrote   dist/index.html (same bundle, so dist/ works as a site root)');
