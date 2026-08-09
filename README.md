@@ -35,18 +35,27 @@ the site root.
 | **GitHub Pages** | Settings → Pages → deploy from a branch, folder `/ (root)` |
 | **Anywhere else** | `node server.js`, `python server.py`, or copy the files behind any web server |
 
-Because a host may be configured for any of these, the repository carries all of
-them, and each is dependency-free:
+A host may be configured any of these ways, often without asking, so the
+repository satisfies all of them:
 
-- `render.yaml` — a Render Blueprint for a static site
-- `server.js` — static server on `node:http` only
-- `server.py` — static server on the Python standard library only
-- `requirements.txt` — deliberately empty, so a default Python build command
-  (`pip install -r requirements.txt`) succeeds rather than failing on a missing file
-- `package-lock.json` — committed, so a default Node build command (`npm ci`) succeeds
+| File | Why it is there |
+|---|---|
+| `render.yaml` | Render Blueprint for a static site |
+| `server.js` | static server, `node:http` only |
+| `server.py` | static server, Python standard library only |
+| `app.py` | WSGI callable, so `gunicorn app:app` resolves; also runnable directly |
+| `gunicorn.conf.py` | binds gunicorn to `$PORT`, so a bare `gunicorn app:app` is reachable |
+| `requirements.txt` | so `pip install -r requirements.txt` succeeds instead of erroring |
+| `package-lock.json` | so `npm ci` succeeds |
 
 Either publish path works: the repository root serves the multi-file game, and
 `dist/` serves the single-file build.
+
+Run `bash tools/deploycheck.sh` to verify all of it from a clean clone — it
+clones `main`, runs every build command, starts every start command, and refuses
+to pass unless each one actually serves a working page (correct MIME types,
+unknown paths falling back to the game, and no file leaking from outside the
+project).
 
 ---
 
@@ -175,8 +184,9 @@ tools/              smoketest.js (headless) · browsertest.js (real Chromium)
 ## Tests
 
 ```
-node tools/smoketest.js     # 2,700+ assertions, no browser needed
+node tools/smoketest.js     # 2,771 assertions, no browser needed
 node tools/browsertest.js   # drives real Chromium and screenshots a playthrough
+bash tools/deploycheck.sh   # every build and start command a host might use
 ```
 
 The headless suite runs 2,771 assertions. It builds **every class against every race** (180 combinations),

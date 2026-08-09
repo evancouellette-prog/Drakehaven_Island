@@ -1,8 +1,8 @@
-# Drakehaven Island has no Python dependencies — it has no dependencies at all.
+# Drakehaven Island itself has NO dependencies — it is static files, and the
+# game runs from index.html with nothing installed.
 #
-# This file exists so that a host configured with the default Python build
-# command (`pip install -r requirements.txt`) succeeds instead of failing with
-# "Could not open requirements file". The game is static files; if you want a
-# Python process to serve them, the start command is:
-#
-#     python server.py
+# gunicorn is here only for hosts whose Python start command names it, e.g.
+# `gunicorn app:app`. gunicorn.conf.py binds it to $PORT automatically.
+# If your start command is `python server.py` or `python app.py`, or you deploy
+# as a static site, nothing in this file is needed.
+gunicorn>=21.2
