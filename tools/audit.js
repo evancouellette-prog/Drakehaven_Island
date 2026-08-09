@@ -149,6 +149,11 @@ refs.forEach(r => {
   const top = r.replace(/^\.?\//, '').split('/')[0];
   if (!allow.has(top)) bad('app.py would refuse "' + r + '" (top-level "' + top + '" not in its allowlist)');
 });
+/* the docs are part of the published site too — a new one is easy to forget */
+tracked.filter(f => f.endsWith('.md') && !f.includes('/')).forEach(f => {
+  checks++;
+  if (!allow.has(f)) bad('app.py would refuse "' + f + '" — add it to SERVE_FILES');
+});
 console.log('  allowlist: ' + [...allow].join(', '));
 
 /* ---------- 7b. a favicon, or every page load logs a 404 ---------- */

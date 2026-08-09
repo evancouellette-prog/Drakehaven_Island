@@ -24,7 +24,7 @@ mimetypes.add_type("text/html", ".html")
 
 # Everything the game is allowed to serve. Anything else is not part of the site.
 SERVE_DIRS = ("css", "js", "dist")
-SERVE_FILES = ("index.html", "README.md", "DESIGN.md")
+SERVE_FILES = ("index.html", "README.md", "DESIGN.md", "DEPLOY.md")
 
 
 def _resolve(url_path):
