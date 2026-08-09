@@ -645,6 +645,25 @@ ok(DH.game.affinity('mimsy') === 3, 'affinity accumulates');
 DH.game.addAffinity('mimsy', 99);
 ok(DH.game.affinity('mimsy') === 10, 'affinity caps at ten');
 
+/* ---------------- carried boons and aimed weak points ---------------- */
+section('story items in play');
+DH.game.reset();
+const boonHero = DH.char.create({
+  name: 'Boon', raceId: 'human', classId: 'ranger', subclassId: 'hunter', backgroundId: 'sage',
+  abilities: { str: 12, dex: 15, con: 13, int: 12, wis: 14, cha: 8 }, skills: ['survival', 'perception', 'investigation']
+});
+DH.game.state.party = [boonHero];
+DH.char.addItem(boonHero, 'hag_necklace');
+const boonSlot = boonHero.inv.find(x => x.id === 'hag_necklace');
+ok(boonSlot && boonSlot.charges === 1, 'the hag necklace arrives with its one charge');
+boonSlot.charges = 0;
+DH.char.shortRest(boonHero);
+ok(boonSlot.charges === 1, 'a short rest restores the necklace charge');
+/* the black dragon advertises a weak point the player can aim at */
+const bd = DH.monster('black_dragon');
+ok((bd.traits || []).some(t => (t.effects || []).some(e => e.indexOf('weak_point:') === 0)),
+  'the black dragon carries a weak point the engine can read');
+
 /* ---------------- script runner, end to end ---------------- */
 section('script runner');
 DH.game.reset();

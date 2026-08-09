@@ -144,10 +144,14 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
 
   console.log('\n=== the prologue ===');
   await clickText('Begin the Story');
-  await page.waitForTimeout(1200);
-  /* skip the chapter card and read through the opening narration */
-  for (let i = 0; i < 6; i++) { await page.keyboard.press('Space'); await page.waitForTimeout(300); }
-  ok(await page.locator('#dlg').isVisible(), 'dialogue is running');
+  /* the chapter card plays first; wait for the dialogue box rather than guessing */
+  let dlgUp = false;
+  for (let i = 0; i < 60; i++) {
+    if (await page.locator('#dlg .txt').first().isVisible().catch(() => false)) { dlgUp = true; break; }
+    await page.waitForTimeout(300);
+  }
+  ok(dlgUp, 'dialogue is running');
+  await page.waitForTimeout(400);
   await shot('prologue');
 
   /* advance until the first choice appears, then take the first option */
@@ -203,7 +207,7 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
     await page.waitForTimeout(900);
   }
   console.log('\n=== the sea hags ===');
-  await page.evaluate(() => DH.scenes.script.run('act0_deck'));
+  await page.evaluate(() => { DH.scenes.script.run('act0_deck'); });
   await page.waitForTimeout(700);
   for (let i = 0; i < 80; i++) {
     if (await page.locator('#actionbar').isVisible().catch(() => false)) break;
@@ -243,6 +247,14 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
     await page.waitForTimeout(250);
   }
   ok(mine, 'the player gets their own turn in the initiative order');
+  /* the action bar is rebuilt at the top of the turn; wait for it to appear */
+  if (mine) {
+    for (let i = 0; i < 30; i++) {
+      const n2 = await page.locator('#abtns button').count();
+      if (n2 > 0) break;
+      await page.waitForTimeout(200);
+    }
+  }
   if (mine) {
     const btns = await page.evaluate(() => Array.from(document.querySelectorAll('#abtns button')).map(x => ({ t: x.textContent, d: x.disabled })));
     const ending = btns.find(b => /Ending Action/.test(b.t));
@@ -289,6 +301,10 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
       await page.waitForTimeout(420);
     }
     /* select a weapon and swing */
+    for (let i = 0; i < 15; i++) {
+      if ((await page.locator('#abtns button').count()) > 0) break;
+      await page.waitForTimeout(150);
+    }
     const picked = await page.evaluate(() => {
       const bar = document.getElementById('abtns');
       if (!bar) return false;
@@ -309,14 +325,21 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
     return true;
   }
 
+  /* Wait on the outcome, not on a turn count: rounds take as long as ten units
+     need. Bail out after a generous deadline so a hang still reports. */
   let attacked = 0, shotMid = false;
-  for (let iter = 0; iter < 40; iter++) {
-    if (!(await page.locator('#actionbar').isVisible().catch(() => false))) break;
+  const fightDeadline = Date.now() + 240000;
+  while (Date.now() < fightDeadline) {
+    const stillFighting = await page.evaluate(() => {
+      const c = DH.game.current();
+      return !!(c && c.name === 'combat');
+    });
+    if (!stillFighting) break;
     const did = await takeTurn();
     if (did) attacked++;
     if (attacked >= 1 && !shotMid) { await shot('combat-mid'); shotMid = true; }
     if (did) await page.keyboard.press('KeyT');
-    await page.waitForTimeout(260);
+    await page.waitForTimeout(did ? 260 : 500);
     /* the dice popup, if a save or a check interrupts */
     const cont = page.locator('#roller button').first();
     if (await cont.isVisible().catch(() => false)) { await cont.click(); await page.waitForTimeout(200); }
@@ -337,10 +360,11 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
 
   /* the story must pick up again where it left off: the necklace beat */
   console.log('\n=== the story resumes ===');
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 90; i++) {
+    if (await page.evaluate(() => DH.game.flag('invited_to_cabin'))) break;
     const choice = page.locator('#dlg .ch').first();
     const cont = page.locator('#roller button').first();
-    if (await cont.isVisible().catch(() => false)) { await cont.click(); await page.waitForTimeout(200); continue; }
+    if (await cont.isVisible().catch(() => false)) { await cont.click(); await page.waitForTimeout(220); continue; }
     if (await choice.isVisible().catch(() => false)) { await choice.click(); await page.waitForTimeout(220); continue; }
     if (await page.evaluate(() => DH.game.flag('invited_to_cabin'))) break;
     await page.keyboard.press('Space');
@@ -396,7 +420,7 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
 
   /* a shop */
   ok(!(await page.evaluate(() => DH.scenes.script.isRunning())), 'no story script is left hanging before the shop');
-  await page.evaluate(() => DH.scenes.script.run('shop_potion_stand'));
+  await page.evaluate(() => { DH.scenes.script.run('shop_potion_stand'); });
   await page.waitForTimeout(600);
   for (let i = 0; i < 6; i++) {
     if (await page.locator('#shop').isVisible().catch(() => false)) break;
@@ -417,7 +441,7 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
   await page.waitForTimeout(400);
 
   console.log('\n=== a minigame ===');
-  await page.evaluate(() => DH.game.push(DH.scenes.minigames, { game: 'dragons_hoard' }));
+  await page.evaluate(() => { DH.game.push(DH.scenes.minigames, { game: 'dragons_hoard' }); DH.game.flushOps(); });
   await page.waitForTimeout(600);
   ok(await page.locator('#mini').isVisible(), 'Dragon\'s Hoard opens');
   ok(/ante/i.test(await page.locator('#mini .rules').textContent()), 'the rules are shown');

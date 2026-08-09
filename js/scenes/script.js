@@ -106,8 +106,17 @@ DH.scenes.script = (function () {
         const label = (s.label || (DH.SKILLS[s.skill] ? DH.SKILLS[s.skill].name : U.titleCase(s.skill || ''))) +
           (s.by !== 'party' ? '' : ' — ' + who.name);
         let adv = !!s.adv, dis = !!s.dis;
-        /* the sea hag's necklace, if someone is wearing it */
-        if (who.boonReady) { adv = true; }
+        /* offer the sea hag's necklace on a hard test, if its charge is unspent */
+        if (!adv && val(s.dc) >= 13) {
+          const boon = findBoon(who);
+          if (boon) {
+            const use = await DH.ui.choose(
+              [{ text: 'Spend the necklace\'s charge for advantage.' }, { text: 'Save it.' }],
+              { who: 'The Sea Hag\'s Necklace', text: 'The salt-crusted silver goes cold against your skin. It has one favour in it, and it will not have another until you rest.' });
+            DH.ui.hideDlg();
+            if (use === 0) { boon.charges--; adv = true; DH.audio.sfx('shield'); }
+          }
+        }
         const r = await DH.ui.roller({
           label: label, dc: val(s.dc), mod: mod, adv: adv, dis: dis,
           modLabel: s.ability ? s.ability.toUpperCase() : (DH.SKILLS[s.skill] || {}).name
@@ -273,6 +282,20 @@ DH.scenes.script = (function () {
     if (need.companion && !DH.game.hasCompanion(need.companion)) return false;
     if (need.test && !need.test(DH.game.state)) return false;
     return true;
+  }
+
+  /* An item carried by anyone in the party that can buy advantage once per rest. */
+  function findBoon(who) {
+    const carriers = [who].concat(DH.game.party());
+    for (const c of carriers) {
+      if (!c || !c.inv) continue;
+      const slot = c.inv.find(s => {
+        const it = DH.item(s.id);
+        return it && (it.effects || []).indexOf('boon_advantage') >= 0 && (s.charges || 0) > 0;
+      });
+      if (slot) return slot;
+    }
+    return null;
   }
 
   /* Who rolls? The player by default; 'party' picks whoever is best. */

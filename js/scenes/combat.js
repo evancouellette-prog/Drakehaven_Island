@@ -734,6 +734,17 @@ DH.scenes.combat = (function () {
     out.push({ id: 'grapple', label: 'Grapple', kind: 'grapple', cost: 'action', enabled: eco.action > 0, tip: '<b>Grapple</b><br>Athletics contest. On a win their speed becomes 0.' });
     out.push({ id: 'throw', label: 'Throw an object', kind: 'throw', cost: 'action', enabled: eco.action > 0, tip: '<b>Throw</b><br>Pick up a barrel, crate or bottle beside you and hurl it. A barrel of freezing water does a flat 20 to the Half-Dragon.' });
     out.push({ id: 'dip', label: 'Dip weapon', kind: 'dip', cost: 'bonus', enabled: eco.bonus > 0, tip: '<b>Dip</b><br>Stand beside a barrel of freezing water and soak your weapon: +1d6 against the Half-Dragon.' });
+    /* a wounded creature on the field can be aimed at, for the extra die the
+       story promised */
+    const wounded = foesOf(u).find(f => (f.ch.effects || []).some(e => e.indexOf('weak_point:') === 0));
+    if (wounded) {
+      const dice = (wounded.ch.effects.find(e => e.indexOf('weak_point:') === 0) || ':1d8').split(':')[1];
+      out.push({
+        id: 'aim', label: 'Aim for the wound' + (u.aimWeakPoint ? ' ✓' : ''), kind: 'feature', feat: 'aim',
+        cost: 'free', enabled: true,
+        tip: '<b>Aim for the wound</b><br>' + DH.ui.esc(wounded.name) + ' is badly hurt in one place. Strike it and add ' + dice + ' damage.'
+      });
+    }
     /* pod */
     if (ch.pod && ch.pod.charges > 0) {
       out.push({ id: 'pod', label: 'Pod Shield (' + ch.pod.charges + ')', kind: 'pod', cost: 'reaction', pod: true, enabled: eco.reaction > 0, tip: '<b>P.A.C.T. Pod — the blue "S"</b><br>+2 AC until your next turn. Costs one charge.' });
@@ -1016,6 +1027,10 @@ DH.scenes.combat = (function () {
         DH.ui.toast('Trip Attack — choose a target.', '', 1600);
         return;
       }
+      case 'aim':
+        u.aimWeakPoint = !u.aimWeakPoint;
+        logLine(u.name + (u.aimWeakPoint ? ' watches the wounded leg.' : ' stops aiming for the wound.'));
+        break;
       case 'feline': spend('feline_agility'); eco.move += eco.moveMax; reach = computeReach(u); logLine(u.name + ' blurs — double speed this turn.'); break;
       case 'aggressive': eco.bonus--; {
         const t = nearestFoe(u);
@@ -1406,7 +1421,6 @@ DH.scenes.combat = (function () {
     const dMod = Math.max(C.skillMod(target.ch, 'athletics'), C.skillMod(target.ch, 'acrobatics'));
     const d = DH.dice.d20({ mod: dMod });
     if (a.total > d.total) {
-      const choice = U.chance(0.5) || true;
       C.addCondition(target.ch, 'prone');
       logLine(u.name + ' shoves ' + target.name + ' flat (' + a.total + ' to ' + d.total + ').', 'hit');
       DH.audio.sfx('hit');

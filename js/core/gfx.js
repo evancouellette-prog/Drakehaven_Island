@@ -221,11 +221,21 @@ DH.gfx = (function () {
       lineTo(x + off, y, x + off, y + TILE, '#2b3140', 1);
       lineTo(x, y + 8, x + TILE, y + 8, '#2b3140', 1);
     },
+    /* Timber walls read as buildings rather than slabs: a lit eave along the top,
+       staggered boards, and the odd knot. */
     woodwall(x, y, tx, ty) {
       rect(x, y, TILE, TILE, C.wood3);
-      rect(x, y, TILE, 2, C.wood);
-      lineTo(x + 5, y, x + 5, y + TILE, '#3a2618', 1);
-      lineTo(x + 11, y, x + 11, y + TILE, '#3a2618', 1);
+      const h = hash(tx, ty, 17);
+      const off = (ty % 2) ? 0 : 3;
+      for (let i = 0; i < 4; i++) {
+        const bx = x + ((i * 4 + off) % TILE);
+        rect(bx, y, 1, TILE, '#3a2618');
+      }
+      rect(x, y, TILE, 3, C.wood);
+      rect(x, y, TILE, 1, C.woodLite);
+      rect(x, y + TILE - 1, TILE, 1, '#2b1c10');
+      if (h > .82) rect(x + 4 + (h * 6 | 0), y + 7, 2, 2, '#2f2013');
+      if (h < .12) rect(x + 2, y + 10, 12, 1, C.wood2);
     },
     path(x, y, tx, ty) {
       rect(x, y, TILE, TILE, C.path);
