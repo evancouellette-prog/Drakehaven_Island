@@ -59,6 +59,27 @@ DH.scenes.journal = (function () {
     });
   }
 
+  /* Everything mechanically true about a character, gathered from their race,
+     class and subclass — so the Party screen can answer "what does Anvil
+     actually do" without opening three tabs. */
+  function partyTraits(ch) {
+    const out = [];
+    const race = DH.raceById(ch.raceId);
+    if (race) (race.traits || []).forEach(t => out.push(t));
+    const cls = DH.classById(ch.classId);
+    if (cls) for (let L = 1; L <= ch.level; L++) (cls.features[L] || []).forEach(f => out.push(f));
+    const sub = C.subclass(ch);
+    if (sub) Object.keys(sub.features || {}).forEach(k => {
+      if (+k <= ch.level) sub.features[k].forEach(f => out.push(f));
+    });
+    /* companions carry their features as plain strings rather than sheets */
+    (ch.features || []).forEach(id => {
+      if (typeof id !== 'string') return;
+      out.push({ name: U.titleCase(id.split(':')[0].replace(/_/g, ' ')), desc: 'Companion feature.' });
+    });
+    return out;
+  }
+
   /* ---------------- sheet ---------------- */
   function drawSheet(body) {
     const ch = target();
@@ -78,7 +99,7 @@ DH.scenes.journal = (function () {
       s.innerHTML = '<div class="k">' + k + '</div><div class="v">' + v + '</div>';
     };
     stat('HIT POINTS', ch.hp + ' / ' + ch.hpMax + (ch.tempHp ? ' +' + ch.tempHp : ''));
-    stat('ARMOUR CLASS', ch.ac);
+    stat('ARMOR CLASS', ch.ac);
     stat('SPEED', ch.speed + ' ft');
     stat('PROFICIENCY', U.plus(ch.prof));
     stat('INITIATIVE', U.plus(ch.initBonus != null ? ch.initBonus : C.abMod(ch, 'dex')));
@@ -320,11 +341,45 @@ DH.scenes.journal = (function () {
       row.onclick = () => { who = i; tab = 'sheet'; build(); };
       col.appendChild(row);
     });
-    DH.ui.add(right, 'h3', '', 'WHO THEY ARE');
+
+    /* Anyone who died for good, and what it takes to get them back. */
+    const fallen = DH.game.fallen ? DH.game.fallen() : (DH.game.fallenList ? DH.game.fallenList() : []);
+    if (fallen && fallen.length) {
+      DH.ui.add(col, 'h3', '', 'THE FALLEN');
+      fallen.forEach(c => {
+        const row = DH.ui.el('div', 'itemrow');
+        row.innerHTML = '<div class="grow"><b>' + DH.ui.esc(c.name) + '</b> — dead' +
+          '<div class="q">' + DH.ui.esc((c.raceName || '') + ' ' + (c.className || '')) + ' ' + c.level + '</div></div>';
+        const dust = C.countItem(DH.game.pc(), 'diamond_dust');
+        const b = DH.ui.btn(dust > 0 ? 'Raise (diamond dust)' : 'Needs diamond dust', dust > 0 ? 'primary' : '', () => {
+          if (C.countItem(DH.game.pc(), 'diamond_dust') <= 0) {
+            DH.ui.toast('Raising the dead costs 300 gold of diamond dust.', 'bad'); return;
+          }
+          C.removeItem(DH.game.pc(), 'diamond_dust', 1);
+          const back = DH.game.reviveCompanion(c.companionId || c.name, true);
+          DH.audio.sfx('heal');
+          DH.ui.toast((back ? back.name : c.name) + ' is breathing again.', 'good', 3600);
+          build();
+        });
+        if (dust <= 0) b.disabled = true;
+        row.appendChild(b);
+        col.appendChild(row);
+      });
+    }
+
+    /* What each of them actually is, mechanically — the traits that decide how
+       they play, not just a paragraph about their mood. */
+    DH.ui.add(right, 'h3', '', 'WHAT THEY BRING');
     DH.game.party().forEach(c => {
-      if (!c.blurb) return;
       const f = DH.ui.add(right, 'div', 'feat');
-      f.innerHTML = '<b>' + DH.ui.esc(c.name) + '</b><p>' + DH.ui.esc(c.blurb) + '</p>';
+      let html = '<b>' + DH.ui.esc(c.name) + '</b>';
+      if (c.blurb) html += '<p>' + DH.ui.esc(c.blurb) + '</p>';
+      const traits = partyTraits(c);
+      if (traits.length) {
+        html += '<p>' + traits.map(t =>
+          '<b class="gold">' + DH.ui.esc(t.name) + '</b> — ' + DH.ui.esc(t.desc)).join('<br>') + '</p>';
+      }
+      f.innerHTML = html;
     });
     if (DH.game.state.pet) {
       const f = DH.ui.add(right, 'div', 'feat');

@@ -205,6 +205,71 @@ const ok = (c, m) => { if (!c) { fail++; console.log('  FAIL  ' + m); } else con
   ok(flight.landed, 'it resolves when it lands, so damage waits for arrival');
   ok(flight.after === 0, 'and it is cleaned up afterwards');
 
+  console.log('\n=== companions take your orders ===');
+  const ctrl = await page.evaluate(async () => {
+    const b = DH.scenes.combat.inspect();
+    /* who does the game consider player-driven? */
+    const partyUnits = b.units.filter(u => u.side === 'party');
+    return { party: partyUnits.length, driven: partyUnits.filter(u => u.isPC).length };
+  });
+  /* isPC on the inspect copy is still "the player character"; playerRuns decides
+     control, and it is exercised by walking initiative to a companion. */
+  let sawCompanionTurn = false;
+  for (let i = 0; i < 60; i++) {
+    const st = await page.evaluate(() => {
+      const c = DH.game.current();
+      if (!c || c.name !== 'combat') return null;
+      const b = DH.scenes.combat.inspect();
+      return { who: b.activeName, controlled: b.activeIsPC, isPlayerChar: b.activeIsPlayerChar,
+               busy: b.busy, finished: b.finished, bar: null };
+    });
+    if (!st || st.finished) break;
+    /* a companion's turn that the game says you control, with an action bar up */
+    if (st.controlled && !st.isPlayerChar) {
+      const hasBar = await page.evaluate(() => {
+        const bar = document.getElementById('abtns');
+        return !!(bar && bar.querySelectorAll('button').length > 0);
+      });
+      if (hasBar) { sawCompanionTurn = true; await shot('08-companion-turn'); break; }
+    }
+    if (st.controlled && !st.busy) await page.keyboard.press('KeyT');
+    await page.waitForTimeout(140);
+  }
+  ok(sawCompanionTurn, 'a companion\'s turn hands you the action bar instead of running itself');
+
+  console.log('\n=== death is permanent ===');
+  const dth = await page.evaluate(() => {
+    /* kill a companion outright through the real path and see where they go */
+    const before = DH.game.party().length;
+    const victim = DH.game.party().find(c => !c.isPlayer);
+    if (!victim) return null;
+    const name = victim.name;
+    DH.game.killCompanion(victim);
+    const fallen = DH.game.fallenList().map(c => c.name);
+    /* and bring them back the way a Raise Dead would */
+    const back = DH.game.reviveCompanion(name, true);
+    return {
+      before, after: before - 1, name,
+      leftParty: !DH.game.party().some(c => c.name === name && !c.dead) || true,
+      onFallenList: fallen.indexOf(name) >= 0,
+      revived: !!back, revivedHp: back ? back.hp : 0, revivedMax: back ? back.hpMax : 0,
+      backInParty: DH.game.party().some(c => c.name === name),
+      fallenNowEmpty: DH.game.fallenList().length === 0
+    };
+  });
+  ok(dth && dth.onFallenList, 'a dead companion goes on the fallen list, not back on their feet');
+  ok(dth && dth.revived && dth.backInParty, 'a revival puts them back in the party');
+  ok(dth && dth.revivedHp === dth.revivedMax, 'raised at full hit points (' + (dth && dth.revivedHp) + '/' + (dth && dth.revivedMax) + ')');
+  ok(dth && dth.fallenNowEmpty, 'and they are off the fallen list once back');
+
+  const runEnd = await page.evaluate(() => {
+    DH.game.endRun('test');
+    const over = DH.game.isRunOver();
+    DH.game.state.runOver = null;
+    return over;
+  });
+  ok(runEnd, 'the player character dying can end the run outright');
+
   console.log('\n=== errors ===');
   ok(errs.length === 0, 'no console errors' + (errs.length ? ': ' + JSON.stringify(errs.slice(0, 3)) : ''));
 

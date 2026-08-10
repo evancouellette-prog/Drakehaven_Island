@@ -37,9 +37,27 @@ DH.scenes.title = (function () {
     menu.appendChild(DH.ui.btn('Settings', '', settings));
 
     DH.ui.add(ui, 'div', 'foot', 'Click anywhere first to let the sound in. Everything you hear is generated live.');
-    DH.ui.add(ui, 'div', 'vsn', 'v1.0');
+    /* Clickable build stamp. A cached page is indistinguishable from a stale
+       build without one, so this shows which version is actually running and
+       what changed in it. */
+    const vsn = DH.ui.add(ui, 'div', 'vsn', 'v' + DH.BUILD.version + ' · build ' + DH.BUILD.id);
+    vsn.style.cursor = 'pointer';
+    vsn.title = 'What changed in this build';
+    vsn.onclick = whatsNew;
 
     ui.addEventListener('mousedown', () => DH.audio.unlock(), { once: true });
+  }
+
+  /* What changed, so a player can confirm they are on the current build. */
+  function whatsNew() {
+    DH.ui.modal({
+      title: 'Build ' + DH.BUILD.id,
+      html: '<p class="small dim">' + DH.ui.esc(DH.BUILD.date) + '</p>' +
+        '<ul>' + DH.BUILD.notes.map(n => '<li>' + DH.ui.esc(n) + '</li>').join('') + '</ul>' +
+        '<p class="small faint">If this list does not match what you were told changed, ' +
+        'you are looking at a cached page — reload with Ctrl+Shift+R (Cmd+Shift+R on a Mac).</p>',
+      buttons: [{ label: 'Close' }]
+    });
   }
 
   /* ---------------- menu actions ---------------- */
@@ -124,7 +142,8 @@ DH.scenes.title = (function () {
         <ul>
           <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or the arrow keys to move. <kbd>Shift</kbd> to hurry.</li>
           <li><kbd>Space</kbd> or <kbd>E</kbd> to talk, open, forage, mine, fish, sleep, and to advance dialogue.</li>
-          <li><kbd>C</kbd> character sheet · <kbd>J</kbd> journal · <kbd>I</kbd> inventory · <kbd>Esc</kbd> menu and saving.</li>
+          <li>Sheet, Inventory, Journal, Party, Pod and Menu / Save are buttons along the bottom left.
+              The keys still work if you prefer them: <kbd>C</kbd> <kbd>I</kbd> <kbd>J</kbd> <kbd>Esc</kbd>.</li>
           <li>Time passes as you walk. Sleep in a bed for a long rest and the next day.</li>
         </ul>
         <h3>Fighting on squares</h3>
@@ -150,8 +169,8 @@ DH.scenes.title = (function () {
       title: 'House Rules at This Table',
       html: `
         <h3>Ending Action</h3>
-        <p>Once per turn, after your Action, Bonus Action and movement are spent, you get one more
-        thing: a knowledge or observation check (Arcana, Investigation, Nature, History, Perception,
+        <p>Once per turn, after your Action and Bonus Action are spent — leftover movement is fine —
+        you get one more thing: a knowledge or observation check (Arcana, Investigation, Nature, History, Perception,
         Religion, Insight, Survival), or using a consumable — including feeding one to a willing
         creature within five feet.</p>
         <h3>No Opportunity Attacks</h3>
@@ -204,25 +223,6 @@ DH.scenes.title = (function () {
     });
   }
 
-  function credits() {
-    DH.ui.modal({
-      title: 'Credits',
-      html: `
-        <p><b>Drakehaven Island</b> — a tactical role-playing game built from nothing: no engine,
-        no libraries, no image files, no audio files. Every sprite is drawn by code onto a canvas and
-        every note is synthesized live.</p>
-        <h3>The Story</h3>
-        <p>The campaign, its people, its stat blocks and its house rules come from a real table:
-        the Mary Parker in a storm, the sea hags, P.A.C.T. and its pods, the crazy ones, the
-        Half-Dragon, Grimble's trials, the swamp, the arena, and the golden egg at the ball.</p>
-        <h3>The Party</h3>
-        <p>Anvil, Umarion and the Ball Wizard — plus whoever you just made.</p>
-        <h3>Rules</h3>
-        <p>A hand-written implementation of fifth-edition-style play: d20 tests, advantage,
-        conditions, spell slots, and a grid where a square is five feet.</p>`,
-      buttons: [{ label: 'Close' }]
-    });
-  }
 
   /* ---------------- animated background ---------------- */
   function update(dt) {

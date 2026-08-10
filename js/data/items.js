@@ -42,7 +42,7 @@ DH.ITEMS = {
   horns: { name: 'Horns', kind: 'weapon', dmg: '1d6', type: 'piercing', price: 0, cat: 'natural', art: 'fists' },
   claws: { name: 'Claws', kind: 'weapon', dmg: '1d4', type: 'slashing', props: ['finesse', 'light'], price: 0, cat: 'natural', art: 'fists' },
 
-  /* ============================ ARMOUR ============================ */
+  /* ============================ ARMOR ============================ */
   padded: { name: 'Padded Armor', kind: 'armor', armorKind: 'light', ac: 11, stealthDis: true, price: 5 },
   leather_armor: { name: 'Leather Armor', kind: 'armor', armorKind: 'light', ac: 11, price: 10 },
   studded_leather: { name: 'Studded Leather', kind: 'armor', armorKind: 'light', ac: 12, price: 45 },

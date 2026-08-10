@@ -432,6 +432,41 @@ input[type=range]{width:100%; accent-color:var(--gold)}
 
 <!-- core -->
 <script>
+/* ---- js/core/build.js ---- */
+/* Which build is actually running.
+
+   A page served from a stable URL is cached aggressively, and a cached copy of
+   an 800 KB single-file game looks exactly like a build where nothing changed.
+   The title screen prints this stamp and lists these notes, so "did my changes
+   land?" is answerable by looking at the screen instead of taking it on trust.
+
+   Bump `id` and rewrite `notes` with every batch of changes. */
+window.DH = window.DH || {};
+
+DH.BUILD = {
+  version: '1.2',
+  id: 4,
+  date: '10 August 2026',
+  notes: [
+    'Companions are yours to play — their turn hands you the action bar instead of running itself. Settings can hand them back to the AI.',
+    'Death is permanent. A dead companion leaves the party for the Fallen list and only a Raise Dead (300gp of diamond dust) brings them back.',
+    'Your own character dying ends the run — no level lost instead, no replacement a step behind.',
+    'The Party screen lists what each member actually brings, race traits and class features together, and holds the revive button.',
+    'Barrels, crates and bone piles stop offering once searched — that was the loop that kept saying "you have already been through this one".',
+    'Every panel is an on-screen button now: Sheet, Inventory, Journal, Party, Pod, Menu / Save.',
+    'Ending Action no longer requires your movement to be used up.',
+    'Enemies no longer show exact hit points or AC — the bar and a word like "Bloodied" instead.',
+    'Combat movement slowed from a slide to a walk.',
+    'Held items suit the class: monks fight empty-handed, bards carry a lute, casters a staff.',
+    'Kobolds lost Sunlight Sensitivity. "Armour" is spelt "armor" throughout.',
+    '4d6-drop-lowest, the tagline under the title, and the Credits button are gone.',
+    'Speakers have a portrait beside their words; the rolled die is a real d20.',
+    'The party is Anvil, Umarion and the Ball Wizard.'
+  ]
+};
+
+</script>
+<script>
 /* ---- js/core/util.js ---- */
 /* Drakehaven Island — core utilities. Everything hangs off window.DH. */
 window.DH = window.DH || {};
@@ -4197,7 +4232,7 @@ DH.ITEMS = {
   horns: { name: 'Horns', kind: 'weapon', dmg: '1d6', type: 'piercing', price: 0, cat: 'natural', art: 'fists' },
   claws: { name: 'Claws', kind: 'weapon', dmg: '1d4', type: 'slashing', props: ['finesse', 'light'], price: 0, cat: 'natural', art: 'fists' },
 
-  /* ============================ ARMOUR ============================ */
+  /* ============================ ARMOR ============================ */
   padded: { name: 'Padded Armor', kind: 'armor', armorKind: 'light', ac: 11, stealthDis: true, price: 5 },
   leather_armor: { name: 'Leather Armor', kind: 'armor', armorKind: 'light', ac: 11, price: 10 },
   studded_leather: { name: 'Studded Leather', kind: 'armor', armorKind: 'light', ac: 12, price: 45 },
@@ -6248,7 +6283,7 @@ DH.STORY = {
     { t: 'banner', big: 'ROLL INITIATIVE', small: 'two sea hags · the deck in a storm', ms: 1700 },
     {
       t: 'combat', arena: 'ship_deck_fight',
-      enemies: ['sea_hag', 'sea_hag'], allies: ['sailor', 'sailor'],
+      enemies: [{ id: 'sea_hag', hp: 38 }, 'drowned_man'], allies: ['sailor', 'sailor', 'sailor'],
       set: 'hags_beaten',
       onWin: [
         { t: 'run', id: 'act0_after_hags' }
@@ -9118,6 +9153,8 @@ DH.game = (function () {
   function freshState() {
     return {
       party: [],                 // characters; [0] is the player
+      fallen: [],                // companions who died for good, kept so they can be revived
+      runOver: null,             // set when the player character dies: the run is finished
       day: 1, minutes: 5 * 60 + 40, weather: 'storm',
       map: 'ship_quarters', placeName: 'The Mary Parker',
       spawn: 'start',
@@ -9198,6 +9235,41 @@ DH.game = (function () {
     return ch;
   }
   function hasCompanion(id) { return !!state.party.find(c => c.companionId === id); }
+
+  /* ---------------- death is permanent ----------------
+     A companion who dies leaves the party and goes on the fallen list, body and
+     sheet intact. Nothing brings them back but a revival, so the list is what a
+     Revivify or a Raise Dead reads from. */
+  function killCompanion(ch) {
+    const i = state.party.indexOf(ch);
+    if (i <= 0) return false;                 // index 0 is the player, handled elsewhere
+    state.party.splice(i, 1);
+    ch.dead = true; ch.dying = false;
+    state.fallen.push(ch);
+    return true;
+  }
+  function fallenList() { return state.fallen; }
+  /* Bring one back. `full` is a Raise Dead: full hit points and no penalty.
+     Otherwise it is a Revivify — they return on 1 hit point. */
+  function reviveCompanion(nameOrId, full) {
+    const i = state.fallen.findIndex(c =>
+      c.companionId === nameOrId || c.name === nameOrId);
+    if (i < 0) return null;
+    const ch = state.fallen.splice(i, 1)[0];
+    ch.dead = false; ch.dying = false;
+    ch.deathSaves = { s: 0, f: 0 };
+    ch.conditions = [];
+    ch.hp = full ? ch.hpMax : 1;
+    state.party.push(ch);
+    return ch;
+  }
+  /* The player character dying ends the run outright — no level loss, no
+     getting back up. The only way on is an earlier save. */
+  function endRun(reason) {
+    state.runOver = reason || 'Your character died.';
+    return state.runOver;
+  }
+  function isRunOver() { return !!state.runOver; }
 
   function partyGold() { return pc() ? pc().gold : 0; }
   function spendGold(n) {
@@ -9399,6 +9471,8 @@ DH.game = (function () {
       pet: state.pet, bestiary: state.bestiary,
       contractDeadlineDay: state.contractDeadlineDay, musterDay: state.musterDay,
       lastTown: state.lastTown, playTime: state.playTime, seenIntro: state.seenIntro,
+      fallen: state.fallen || [],
+      runOver: state.runOver || null,
       storyPointer: state.storyPointer || null
     };
   }
@@ -9452,6 +9526,7 @@ DH.game = (function () {
     freshState, reset, serialize, saveTo, loadFrom,
     push, pop, replace, clearScenes, current, inScene, flushOps,
     pc, party, alive, addCompanion, hasCompanion,
+    killCompanion, reviveCompanion, fallenList, endRun, isRunOver,
     partyGold, spendGold, giveGold, giveItem, giveItemToAll, issuePods, awardXp,
     setFlag, flag, flagVal, bump, counter,
     addQuest, questStep, completeQuest, questDone, hasQuest,
@@ -9507,9 +9582,27 @@ DH.scenes.title = (function () {
     menu.appendChild(DH.ui.btn('Settings', '', settings));
 
     DH.ui.add(ui, 'div', 'foot', 'Click anywhere first to let the sound in. Everything you hear is generated live.');
-    DH.ui.add(ui, 'div', 'vsn', 'v1.0');
+    /* Clickable build stamp. A cached page is indistinguishable from a stale
+       build without one, so this shows which version is actually running and
+       what changed in it. */
+    const vsn = DH.ui.add(ui, 'div', 'vsn', 'v' + DH.BUILD.version + ' · build ' + DH.BUILD.id);
+    vsn.style.cursor = 'pointer';
+    vsn.title = 'What changed in this build';
+    vsn.onclick = whatsNew;
 
     ui.addEventListener('mousedown', () => DH.audio.unlock(), { once: true });
+  }
+
+  /* What changed, so a player can confirm they are on the current build. */
+  function whatsNew() {
+    DH.ui.modal({
+      title: 'Build ' + DH.BUILD.id,
+      html: '<p class="small dim">' + DH.ui.esc(DH.BUILD.date) + '</p>' +
+        '<ul>' + DH.BUILD.notes.map(n => '<li>' + DH.ui.esc(n) + '</li>').join('') + '</ul>' +
+        '<p class="small faint">If this list does not match what you were told changed, ' +
+        'you are looking at a cached page — reload with Ctrl+Shift+R (Cmd+Shift+R on a Mac).</p>',
+      buttons: [{ label: 'Close' }]
+    });
   }
 
   /* ---------------- menu actions ---------------- */
@@ -9594,7 +9687,8 @@ DH.scenes.title = (function () {
         <ul>
           <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or the arrow keys to move. <kbd>Shift</kbd> to hurry.</li>
           <li><kbd>Space</kbd> or <kbd>E</kbd> to talk, open, forage, mine, fish, sleep, and to advance dialogue.</li>
-          <li><kbd>C</kbd> character sheet · <kbd>J</kbd> journal · <kbd>I</kbd> inventory · <kbd>Esc</kbd> menu and saving.</li>
+          <li>Sheet, Inventory, Journal, Party, Pod and Menu / Save are buttons along the bottom left.
+              The keys still work if you prefer them: <kbd>C</kbd> <kbd>I</kbd> <kbd>J</kbd> <kbd>Esc</kbd>.</li>
           <li>Time passes as you walk. Sleep in a bed for a long rest and the next day.</li>
         </ul>
         <h3>Fighting on squares</h3>
@@ -9620,8 +9714,8 @@ DH.scenes.title = (function () {
       title: 'House Rules at This Table',
       html: `
         <h3>Ending Action</h3>
-        <p>Once per turn, after your Action, Bonus Action and movement are spent, you get one more
-        thing: a knowledge or observation check (Arcana, Investigation, Nature, History, Perception,
+        <p>Once per turn, after your Action and Bonus Action are spent — leftover movement is fine —
+        you get one more thing: a knowledge or observation check (Arcana, Investigation, Nature, History, Perception,
         Religion, Insight, Survival), or using a consumable — including feeding one to a willing
         creature within five feet.</p>
         <h3>No Opportunity Attacks</h3>
@@ -9674,25 +9768,6 @@ DH.scenes.title = (function () {
     });
   }
 
-  function credits() {
-    DH.ui.modal({
-      title: 'Credits',
-      html: `
-        <p><b>Drakehaven Island</b> — a tactical role-playing game built from nothing: no engine,
-        no libraries, no image files, no audio files. Every sprite is drawn by code onto a canvas and
-        every note is synthesized live.</p>
-        <h3>The Story</h3>
-        <p>The campaign, its people, its stat blocks and its house rules come from a real table:
-        the Mary Parker in a storm, the sea hags, P.A.C.T. and its pods, the crazy ones, the
-        Half-Dragon, Grimble's trials, the swamp, the arena, and the golden egg at the ball.</p>
-        <h3>The Party</h3>
-        <p>Anvil, Umarion and the Ball Wizard — plus whoever you just made.</p>
-        <h3>Rules</h3>
-        <p>A hand-written implementation of fifth-edition-style play: d20 tests, advantage,
-        conditions, spell slots, and a grid where a square is five feet.</p>`,
-      buttons: [{ label: 'Close' }]
-    });
-  }
 
   /* ---------------- animated background ---------------- */
   function update(dt) {
@@ -10486,7 +10561,7 @@ DH.scenes.charcreate = (function () {
       s.innerHTML = '<div class="k">' + k + '</div><div class="v">' + v + '</div>';
     };
     stat('HIT POINTS', ch.hpMax);
-    stat('ARMOUR CLASS', ch.ac);
+    stat('ARMOR CLASS', ch.ac);
     stat('SPEED', ch.speed + ' ft');
     stat('PROFICIENCY', U.plus(ch.prof));
     stat('INITIATIVE', U.plus(ch.initBonus));
@@ -11365,6 +11440,14 @@ DH.scenes.combat = (function () {
   /* Milliseconds to cross one five-foot square. Everything moved at 60-75ms,
      which read as sliding rather than walking. */
   const STEP_MS = 170;
+  /* Whether this unit takes its orders from you. The player character always
+     does; companions do unless the autoCompanions setting is on. */
+  function playerRuns(u) {
+    if (!u || u.side !== 'party' || !u.isCharacter) return false;
+    if (u.isPC) return true;
+    return !(DH.save.loadConfig() || {}).autoCompanions;
+  }
+
   /* tiles lit for a moment to show what an area effect covered */
   let tileFx = [];
   /* which particle palette a spell's damage type flies as */
@@ -11646,7 +11729,10 @@ DH.scenes.combat = (function () {
     logLine('— ' + u.name + '\'s turn (round ' + round + ') —', 'turn');
     reach = computeReach(u);
     refreshUI();
-    if (u.side === 'foe' || (!u.isPC && u.side === 'party')) {
+    /* Everyone on your side is yours to play — companions included. Only foes
+       are run by the AI, unless you have asked for companions to run themselves
+       in Settings. */
+    if (u.side === 'foe' || (u.side === 'party' && !playerRuns(u))) {
       busy = true;
       setTimeout(() => aiTurn(u), 520);
     } else busy = false;
@@ -11708,14 +11794,38 @@ DH.scenes.combat = (function () {
       });
       DH.game.awardXp(xp);
     }
+    /* Death is final now. A companion who died leaves the party for the fallen
+       list and only a revival brings them back. The player character dying ends
+       the run — there is no getting up from it and no level to pay instead. */
+    const playerDied = fallen.some(c => c.isPlayer);
     for (const c of fallen) {
+      if (c.isPlayer) continue;
       await DH.ui.say({
         who: 'The Table', narr: true,
-        text: c.name + ' failed their last death save.\n\nHouse rule: you lose one character level. You may keep this character, or make a new one a level below the others.'
+        text: c.name + ' is dead.\n\nNot unconscious. Dead. They do not get back up at the end of this fight, ' +
+          'and they will not be waiting for you at the inn. Revivify within a minute, or Raise Dead later, ' +
+          'and you get them back. Otherwise that is the end of ' + c.name + '.'
       });
-      C.loseLevel(c);
+      DH.game.killCompanion(c);
       DH.ui.hideDlg();
-      DH.ui.toast(c.name + ' is back on their feet, one level lighter.', 'bad', 3200);
+      DH.ui.toast(c.name + ' is dead. Check the Party screen to revive them.', 'bad', 4200);
+    }
+    if (playerDied) {
+      DH.game.endRun(DH.game.pc().name + ' died on ' + arena.name + '.');
+      await DH.ui.say({
+        who: 'The Table', narr: true,
+        text: DH.game.pc().name + ' is dead, and that is the run.\n\nNo level lost, no new character a step behind ' +
+          'the others — the story you were telling stops here. Load an earlier save to tell a different one.'
+      });
+      DH.ui.hideDlg();
+      resolved = true;
+      const cb2 = onDone; onDone = null;
+      DH.game.pop({ won: false, runOver: true });
+      DH.game.replace(DH.scenes.title);
+      DH.game.flushOps();
+      DH.ui.toast('The run is over.', 'bad', 5000);
+      if (cb2) cb2({ won: false, runOver: true });
+      return;
     }
     DH.ui.hideDlg();
     const result = { won: won, xp: 0 };
@@ -12122,7 +12232,7 @@ DH.scenes.combat = (function () {
     const ch = u.ch;
     const eco = u.eco;
     /* weapon attacks */
-    if (u.isPC) {
+    if (playerRuns(u)) {
       C.attacks(ch).forEach(atk => {
         out.push({
           id: 'atk_' + atk.id + (atk.tag || ''), label: (atk.tag ? atk.tag + ' ' : '') + atk.name,
@@ -12280,7 +12390,7 @@ DH.scenes.combat = (function () {
     bar.innerHTML = '';
     if (!u) return;
     const top = DH.ui.add(bar, 'div', 'top');
-    DH.ui.add(top, 'div', 'nm', DH.ui.esc(u.name) + (u.isPC ? '' : u.side === 'party' ? ' (companion)' : ' (enemy)'));
+    DH.ui.add(top, 'div', 'nm', DH.ui.esc(u.name));
     const pips = DH.ui.add(top, 'div', 'pips2');
     const eco = u.eco;
     const mk = (lbl, on, cls) => {
@@ -12296,7 +12406,7 @@ DH.scenes.combat = (function () {
       '  ·  HP ' + u.ch.hp + '/' + u.ch.hpMax + (u.ch.tempHp ? ' (+' + u.ch.tempHp + ')' : '') +
       '  ·  AC ' + totalAC(u));
 
-    if (!u.isPC) {
+    if (!playerRuns(u)) {
       DH.ui.add(bar, 'div', 'small dim', 'Thinking…');
       return;
     }
@@ -12568,7 +12678,7 @@ DH.scenes.combat = (function () {
   /* =============== clicking the grid =============== */
   function handleClick() {
     const u = active();
-    if (!u || !u.isPC || busy || finished) return;
+    if (!u || !playerRuns(u) || busy || finished) return;
     const m = DH.input.mouse;
     const gx = Math.floor((m.x - ox) / CELL), gy = Math.floor((m.y - oy) / CELL);
     if (!inBounds(gx, gy)) return;
@@ -13265,8 +13375,8 @@ DH.scenes.combat = (function () {
     if (!busy && !finished && !DH.ui.modalOpen() && !DH.ui.dlgVisible()) {
       if (m.clicked) handleClick();
       /* only your own turn is yours to end */
-      if (DH.input.tapped('endturn')) { const u = active(); if (u && u.isPC) endTurn(); }
-      if (DH.input.tapped('pod')) { const u = active(); if (u && u.isPC) { usePod(u); refreshUI(); } }
+      if (DH.input.tapped('endturn')) { const u = active(); if (u && playerRuns(u)) endTurn(); }
+      if (DH.input.tapped('pod')) { const u = active(); if (u && playerRuns(u)) { usePod(u); refreshUI(); } }
       if (DH.input.tapped('cancel')) { mode = null; refreshUI(); }
     }
     units.forEach(u => {
@@ -13324,7 +13434,7 @@ DH.scenes.combat = (function () {
 
     /* reachable squares for the active unit */
     const u = active();
-    if (u && u.isPC && reach && !busy) {
+    if (u && playerRuns(u) && reach && !busy) {
       reach.dist.forEach((cost, key) => {
         if (cost > u.eco.move) return;
         const [x, y] = key.split(',').map(Number);
@@ -13340,7 +13450,7 @@ DH.scenes.combat = (function () {
     if (hoverTile) {
       const px = ox + hoverTile.x * CELL, py = oy + hoverTile.y * CELL;
       const key = hoverTile.x + ',' + hoverTile.y;
-      const legal = u && u.isPC && reach && reach.dist.has(key) && reach.dist.get(key) <= u.eco.move;
+      const legal = u && playerRuns(u) && reach && reach.dist.has(key) && reach.dist.get(key) <= u.eco.move;
       G.stroke(px, py, CELL, CELL, legal ? G.C.gold : '#8ba0c0', 2, true);
       if (legal && !hoverUnit) {
         G.text(reach.dist.get(key) + ' ft', px + CELL / 2, py + CELL / 2 - 3, { align: 'center', size: 8, color: G.C.gold });
@@ -13472,7 +13582,8 @@ DH.scenes.combat = (function () {
       round: round, finished: finished, busy: busy,
       origin: { x: ox, y: oy, cell: CELL },
       activeName: u ? u.name : null,
-      activeIsPC: !!(u && u.isPC),
+      activeIsPC: !!(u && playerRuns(u)),
+      activeIsPlayerChar: !!(u && u.isPC),
       /* how many bolts are crossing the field right now */
       bolts: G.boltCount(),
       tileFx: tileFx.length,
@@ -14987,6 +15098,27 @@ DH.scenes.journal = (function () {
     });
   }
 
+  /* Everything mechanically true about a character, gathered from their race,
+     class and subclass — so the Party screen can answer "what does Anvil
+     actually do" without opening three tabs. */
+  function partyTraits(ch) {
+    const out = [];
+    const race = DH.raceById(ch.raceId);
+    if (race) (race.traits || []).forEach(t => out.push(t));
+    const cls = DH.classById(ch.classId);
+    if (cls) for (let L = 1; L <= ch.level; L++) (cls.features[L] || []).forEach(f => out.push(f));
+    const sub = C.subclass(ch);
+    if (sub) Object.keys(sub.features || {}).forEach(k => {
+      if (+k <= ch.level) sub.features[k].forEach(f => out.push(f));
+    });
+    /* companions carry their features as plain strings rather than sheets */
+    (ch.features || []).forEach(id => {
+      if (typeof id !== 'string') return;
+      out.push({ name: U.titleCase(id.split(':')[0].replace(/_/g, ' ')), desc: 'Companion feature.' });
+    });
+    return out;
+  }
+
   /* ---------------- sheet ---------------- */
   function drawSheet(body) {
     const ch = target();
@@ -15006,7 +15138,7 @@ DH.scenes.journal = (function () {
       s.innerHTML = '<div class="k">' + k + '</div><div class="v">' + v + '</div>';
     };
     stat('HIT POINTS', ch.hp + ' / ' + ch.hpMax + (ch.tempHp ? ' +' + ch.tempHp : ''));
-    stat('ARMOUR CLASS', ch.ac);
+    stat('ARMOR CLASS', ch.ac);
     stat('SPEED', ch.speed + ' ft');
     stat('PROFICIENCY', U.plus(ch.prof));
     stat('INITIATIVE', U.plus(ch.initBonus != null ? ch.initBonus : C.abMod(ch, 'dex')));
@@ -15248,11 +15380,45 @@ DH.scenes.journal = (function () {
       row.onclick = () => { who = i; tab = 'sheet'; build(); };
       col.appendChild(row);
     });
-    DH.ui.add(right, 'h3', '', 'WHO THEY ARE');
+
+    /* Anyone who died for good, and what it takes to get them back. */
+    const fallen = DH.game.fallen ? DH.game.fallen() : (DH.game.fallenList ? DH.game.fallenList() : []);
+    if (fallen && fallen.length) {
+      DH.ui.add(col, 'h3', '', 'THE FALLEN');
+      fallen.forEach(c => {
+        const row = DH.ui.el('div', 'itemrow');
+        row.innerHTML = '<div class="grow"><b>' + DH.ui.esc(c.name) + '</b> — dead' +
+          '<div class="q">' + DH.ui.esc((c.raceName || '') + ' ' + (c.className || '')) + ' ' + c.level + '</div></div>';
+        const dust = C.countItem(DH.game.pc(), 'diamond_dust');
+        const b = DH.ui.btn(dust > 0 ? 'Raise (diamond dust)' : 'Needs diamond dust', dust > 0 ? 'primary' : '', () => {
+          if (C.countItem(DH.game.pc(), 'diamond_dust') <= 0) {
+            DH.ui.toast('Raising the dead costs 300 gold of diamond dust.', 'bad'); return;
+          }
+          C.removeItem(DH.game.pc(), 'diamond_dust', 1);
+          const back = DH.game.reviveCompanion(c.companionId || c.name, true);
+          DH.audio.sfx('heal');
+          DH.ui.toast((back ? back.name : c.name) + ' is breathing again.', 'good', 3600);
+          build();
+        });
+        if (dust <= 0) b.disabled = true;
+        row.appendChild(b);
+        col.appendChild(row);
+      });
+    }
+
+    /* What each of them actually is, mechanically — the traits that decide how
+       they play, not just a paragraph about their mood. */
+    DH.ui.add(right, 'h3', '', 'WHAT THEY BRING');
     DH.game.party().forEach(c => {
-      if (!c.blurb) return;
       const f = DH.ui.add(right, 'div', 'feat');
-      f.innerHTML = '<b>' + DH.ui.esc(c.name) + '</b><p>' + DH.ui.esc(c.blurb) + '</p>';
+      let html = '<b>' + DH.ui.esc(c.name) + '</b>';
+      if (c.blurb) html += '<p>' + DH.ui.esc(c.blurb) + '</p>';
+      const traits = partyTraits(c);
+      if (traits.length) {
+        html += '<p>' + traits.map(t =>
+          '<b class="gold">' + DH.ui.esc(t.name) + '</b> — ' + DH.ui.esc(t.desc)).join('<br>') + '</p>';
+      }
+      f.innerHTML = html;
     });
     if (DH.game.state.pet) {
       const f = DH.ui.add(right, 'div', 'feat');

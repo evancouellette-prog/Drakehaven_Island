@@ -312,8 +312,11 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
       const bar = document.getElementById('abtns');
       if (!bar) return false;
       const btns = Array.from(bar.querySelectorAll('button'));
-      const atk = btns.find(b => !b.disabled &&
-        /Longsword|Unarmed Strike|Rapier|Shortsword|Javelin|Mace|Greataxe|Warhammer|Quarterstaff|Horns|Claws/.test(b.textContent));
+      /* Everyone in the party is player-driven now, so this has to work for a
+         gnome with Fire Bolt and an elf with a longbow as well as a paladin with
+         a sword. Deny the utilities rather than trying to list every weapon. */
+      const skip = /Dash|Dodge|Shove|Grapple|Throw|Dip |Pod Shield|End Turn|Ending Action|Drink|Hide|Help|Ready/i;
+      const atk = btns.find(b => !b.disabled && b.textContent.trim() && !skip.test(b.textContent));
       if (atk) { atk.click(); return atk.textContent; }
       return false;
     });
@@ -328,8 +331,9 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
     return true;
   }
 
-  /* Press End Turn once the scene will accept it, then wait for initiative to
-     actually move on. Returns false if the turn would not budge. */
+  /* Companions take orders from the player now. takeTurn() drives whoever is
+     active and player-controlled, so the party actually fights rather than three
+     of them passing every round. */
   async function endTurnWhenIdle() {
     for (let i = 0; i < 40; i++) {
       const st = await page.evaluate(() => {
@@ -437,7 +441,7 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
   await page.waitForTimeout(500);
   ok(await page.locator('#book').isVisible(), 'the character sheet opens');
   const sheetText = await page.locator('#book-body').textContent();
-  ok(/HIT POINTS/.test(sheetText) && /ARMOUR CLASS/.test(sheetText), 'the sheet shows hit points and AC');
+  ok(/HIT POINTS/.test(sheetText) && /ARMOR CLASS/.test(sheetText), 'the sheet shows hit points and AC');
   ok(/Divine Sense|Lay on Hands/.test(sheetText), 'the sheet lists class features');
   await shot('sheet');
 

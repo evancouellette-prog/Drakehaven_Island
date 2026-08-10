@@ -254,7 +254,7 @@ DH.STORY = {
     { t: 'banner', big: 'ROLL INITIATIVE', small: 'two sea hags · the deck in a storm', ms: 1700 },
     {
       t: 'combat', arena: 'ship_deck_fight',
-      enemies: ['sea_hag', 'sea_hag'], allies: ['sailor', 'sailor'],
+      enemies: [{ id: 'sea_hag', hp: 38 }, 'drowned_man'], allies: ['sailor', 'sailor', 'sailor'],
       set: 'hags_beaten',
       onWin: [
         { t: 'run', id: 'act0_after_hags' }

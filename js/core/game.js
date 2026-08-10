@@ -9,6 +9,8 @@ DH.game = (function () {
   function freshState() {
     return {
       party: [],                 // characters; [0] is the player
+      fallen: [],                // companions who died for good, kept so they can be revived
+      runOver: null,             // set when the player character dies: the run is finished
       day: 1, minutes: 5 * 60 + 40, weather: 'storm',
       map: 'ship_quarters', placeName: 'The Mary Parker',
       spawn: 'start',
@@ -89,6 +91,41 @@ DH.game = (function () {
     return ch;
   }
   function hasCompanion(id) { return !!state.party.find(c => c.companionId === id); }
+
+  /* ---------------- death is permanent ----------------
+     A companion who dies leaves the party and goes on the fallen list, body and
+     sheet intact. Nothing brings them back but a revival, so the list is what a
+     Revivify or a Raise Dead reads from. */
+  function killCompanion(ch) {
+    const i = state.party.indexOf(ch);
+    if (i <= 0) return false;                 // index 0 is the player, handled elsewhere
+    state.party.splice(i, 1);
+    ch.dead = true; ch.dying = false;
+    state.fallen.push(ch);
+    return true;
+  }
+  function fallenList() { return state.fallen; }
+  /* Bring one back. `full` is a Raise Dead: full hit points and no penalty.
+     Otherwise it is a Revivify — they return on 1 hit point. */
+  function reviveCompanion(nameOrId, full) {
+    const i = state.fallen.findIndex(c =>
+      c.companionId === nameOrId || c.name === nameOrId);
+    if (i < 0) return null;
+    const ch = state.fallen.splice(i, 1)[0];
+    ch.dead = false; ch.dying = false;
+    ch.deathSaves = { s: 0, f: 0 };
+    ch.conditions = [];
+    ch.hp = full ? ch.hpMax : 1;
+    state.party.push(ch);
+    return ch;
+  }
+  /* The player character dying ends the run outright — no level loss, no
+     getting back up. The only way on is an earlier save. */
+  function endRun(reason) {
+    state.runOver = reason || 'Your character died.';
+    return state.runOver;
+  }
+  function isRunOver() { return !!state.runOver; }
 
   function partyGold() { return pc() ? pc().gold : 0; }
   function spendGold(n) {
@@ -290,6 +327,8 @@ DH.game = (function () {
       pet: state.pet, bestiary: state.bestiary,
       contractDeadlineDay: state.contractDeadlineDay, musterDay: state.musterDay,
       lastTown: state.lastTown, playTime: state.playTime, seenIntro: state.seenIntro,
+      fallen: state.fallen || [],
+      runOver: state.runOver || null,
       storyPointer: state.storyPointer || null
     };
   }
@@ -343,6 +382,7 @@ DH.game = (function () {
     freshState, reset, serialize, saveTo, loadFrom,
     push, pop, replace, clearScenes, current, inScene, flushOps,
     pc, party, alive, addCompanion, hasCompanion,
+    killCompanion, reviveCompanion, fallenList, endRun, isRunOver,
     partyGold, spendGold, giveGold, giveItem, giveItemToAll, issuePods, awardXp,
     setFlag, flag, flagVal, bump, counter,
     addQuest, questStep, completeQuest, questDone, hasQuest,

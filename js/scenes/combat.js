@@ -28,6 +28,14 @@ DH.scenes.combat = (function () {
   /* Milliseconds to cross one five-foot square. Everything moved at 60-75ms,
      which read as sliding rather than walking. */
   const STEP_MS = 170;
+  /* Whether this unit takes its orders from you. The player character always
+     does; companions do unless the autoCompanions setting is on. */
+  function playerRuns(u) {
+    if (!u || u.side !== 'party' || !u.isCharacter) return false;
+    if (u.isPC) return true;
+    return !(DH.save.loadConfig() || {}).autoCompanions;
+  }
+
   /* tiles lit for a moment to show what an area effect covered */
   let tileFx = [];
   /* which particle palette a spell's damage type flies as */
@@ -309,7 +317,10 @@ DH.scenes.combat = (function () {
     logLine('— ' + u.name + '\'s turn (round ' + round + ') —', 'turn');
     reach = computeReach(u);
     refreshUI();
-    if (u.side === 'foe' || (!u.isPC && u.side === 'party')) {
+    /* Everyone on your side is yours to play — companions included. Only foes
+       are run by the AI, unless you have asked for companions to run themselves
+       in Settings. */
+    if (u.side === 'foe' || (u.side === 'party' && !playerRuns(u))) {
       busy = true;
       setTimeout(() => aiTurn(u), 520);
     } else busy = false;
@@ -371,14 +382,38 @@ DH.scenes.combat = (function () {
       });
       DH.game.awardXp(xp);
     }
+    /* Death is final now. A companion who died leaves the party for the fallen
+       list and only a revival brings them back. The player character dying ends
+       the run — there is no getting up from it and no level to pay instead. */
+    const playerDied = fallen.some(c => c.isPlayer);
     for (const c of fallen) {
+      if (c.isPlayer) continue;
       await DH.ui.say({
         who: 'The Table', narr: true,
-        text: c.name + ' failed their last death save.\n\nHouse rule: you lose one character level. You may keep this character, or make a new one a level below the others.'
+        text: c.name + ' is dead.\n\nNot unconscious. Dead. They do not get back up at the end of this fight, ' +
+          'and they will not be waiting for you at the inn. Revivify within a minute, or Raise Dead later, ' +
+          'and you get them back. Otherwise that is the end of ' + c.name + '.'
       });
-      C.loseLevel(c);
+      DH.game.killCompanion(c);
       DH.ui.hideDlg();
-      DH.ui.toast(c.name + ' is back on their feet, one level lighter.', 'bad', 3200);
+      DH.ui.toast(c.name + ' is dead. Check the Party screen to revive them.', 'bad', 4200);
+    }
+    if (playerDied) {
+      DH.game.endRun(DH.game.pc().name + ' died on ' + arena.name + '.');
+      await DH.ui.say({
+        who: 'The Table', narr: true,
+        text: DH.game.pc().name + ' is dead, and that is the run.\n\nNo level lost, no new character a step behind ' +
+          'the others — the story you were telling stops here. Load an earlier save to tell a different one.'
+      });
+      DH.ui.hideDlg();
+      resolved = true;
+      const cb2 = onDone; onDone = null;
+      DH.game.pop({ won: false, runOver: true });
+      DH.game.replace(DH.scenes.title);
+      DH.game.flushOps();
+      DH.ui.toast('The run is over.', 'bad', 5000);
+      if (cb2) cb2({ won: false, runOver: true });
+      return;
     }
     DH.ui.hideDlg();
     const result = { won: won, xp: 0 };
@@ -785,7 +820,7 @@ DH.scenes.combat = (function () {
     const ch = u.ch;
     const eco = u.eco;
     /* weapon attacks */
-    if (u.isPC) {
+    if (playerRuns(u)) {
       C.attacks(ch).forEach(atk => {
         out.push({
           id: 'atk_' + atk.id + (atk.tag || ''), label: (atk.tag ? atk.tag + ' ' : '') + atk.name,
@@ -943,7 +978,7 @@ DH.scenes.combat = (function () {
     bar.innerHTML = '';
     if (!u) return;
     const top = DH.ui.add(bar, 'div', 'top');
-    DH.ui.add(top, 'div', 'nm', DH.ui.esc(u.name) + (u.isPC ? '' : u.side === 'party' ? ' (companion)' : ' (enemy)'));
+    DH.ui.add(top, 'div', 'nm', DH.ui.esc(u.name));
     const pips = DH.ui.add(top, 'div', 'pips2');
     const eco = u.eco;
     const mk = (lbl, on, cls) => {
@@ -959,7 +994,7 @@ DH.scenes.combat = (function () {
       '  ·  HP ' + u.ch.hp + '/' + u.ch.hpMax + (u.ch.tempHp ? ' (+' + u.ch.tempHp + ')' : '') +
       '  ·  AC ' + totalAC(u));
 
-    if (!u.isPC) {
+    if (!playerRuns(u)) {
       DH.ui.add(bar, 'div', 'small dim', 'Thinking…');
       return;
     }
@@ -1231,7 +1266,7 @@ DH.scenes.combat = (function () {
   /* =============== clicking the grid =============== */
   function handleClick() {
     const u = active();
-    if (!u || !u.isPC || busy || finished) return;
+    if (!u || !playerRuns(u) || busy || finished) return;
     const m = DH.input.mouse;
     const gx = Math.floor((m.x - ox) / CELL), gy = Math.floor((m.y - oy) / CELL);
     if (!inBounds(gx, gy)) return;
@@ -1928,8 +1963,8 @@ DH.scenes.combat = (function () {
     if (!busy && !finished && !DH.ui.modalOpen() && !DH.ui.dlgVisible()) {
       if (m.clicked) handleClick();
       /* only your own turn is yours to end */
-      if (DH.input.tapped('endturn')) { const u = active(); if (u && u.isPC) endTurn(); }
-      if (DH.input.tapped('pod')) { const u = active(); if (u && u.isPC) { usePod(u); refreshUI(); } }
+      if (DH.input.tapped('endturn')) { const u = active(); if (u && playerRuns(u)) endTurn(); }
+      if (DH.input.tapped('pod')) { const u = active(); if (u && playerRuns(u)) { usePod(u); refreshUI(); } }
       if (DH.input.tapped('cancel')) { mode = null; refreshUI(); }
     }
     units.forEach(u => {
@@ -1987,7 +2022,7 @@ DH.scenes.combat = (function () {
 
     /* reachable squares for the active unit */
     const u = active();
-    if (u && u.isPC && reach && !busy) {
+    if (u && playerRuns(u) && reach && !busy) {
       reach.dist.forEach((cost, key) => {
         if (cost > u.eco.move) return;
         const [x, y] = key.split(',').map(Number);
@@ -2003,7 +2038,7 @@ DH.scenes.combat = (function () {
     if (hoverTile) {
       const px = ox + hoverTile.x * CELL, py = oy + hoverTile.y * CELL;
       const key = hoverTile.x + ',' + hoverTile.y;
-      const legal = u && u.isPC && reach && reach.dist.has(key) && reach.dist.get(key) <= u.eco.move;
+      const legal = u && playerRuns(u) && reach && reach.dist.has(key) && reach.dist.get(key) <= u.eco.move;
       G.stroke(px, py, CELL, CELL, legal ? G.C.gold : '#8ba0c0', 2, true);
       if (legal && !hoverUnit) {
         G.text(reach.dist.get(key) + ' ft', px + CELL / 2, py + CELL / 2 - 3, { align: 'center', size: 8, color: G.C.gold });
@@ -2135,7 +2170,8 @@ DH.scenes.combat = (function () {
       round: round, finished: finished, busy: busy,
       origin: { x: ox, y: oy, cell: CELL },
       activeName: u ? u.name : null,
-      activeIsPC: !!(u && u.isPC),
+      activeIsPC: !!(u && playerRuns(u)),
+      activeIsPlayerChar: !!(u && u.isPC),
       /* how many bolts are crossing the field right now */
       bolts: G.boltCount(),
       tileFx: tileFx.length,

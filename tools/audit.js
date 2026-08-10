@@ -55,6 +55,7 @@ const scripts = [];
 html.replace(/<script src="([^"]+)"><\/script>/g, (_, s) => { scripts.push(s); return _; });
 const idx = (f) => scripts.indexOf(f);
 const mustPrecede = [
+  ['js/core/build.js', 'js/scenes/title.js'],   // the title screen prints the build stamp
   ['js/core/util.js', 'js/core/gfx.js'],
   ['js/core/util.js', 'js/rules/dice.js'],
   ['js/core/gfx.js', 'js/data/maps.js'],       // maps.js reads DH.gfx.TILE at load

@@ -716,7 +716,7 @@ DH.scenes.charcreate = (function () {
       s.innerHTML = '<div class="k">' + k + '</div><div class="v">' + v + '</div>';
     };
     stat('HIT POINTS', ch.hpMax);
-    stat('ARMOUR CLASS', ch.ac);
+    stat('ARMOR CLASS', ch.ac);
     stat('SPEED', ch.speed + ' ft');
     stat('PROFICIENCY', U.plus(ch.prof));
     stat('INITIATIVE', U.plus(ch.initBonus));
