@@ -7,6 +7,16 @@
 # If you already created the service by hand, you do not need this file; set
 # Publish Directory to "." and Build Command to empty, and point the service at
 # the main branch.
+#
+# NO REWRITE RULES. This file used to carry the usual single-page rule,
+# `/*` -> `/index.html`. Do not add it back, and delete it from the dashboard's
+# Redirects/Rewrites tab if it is there. A catch-all rewrite also matches
+# /js/util.js and /css/style.css, so every script request is answered with the
+# HTML page instead. The browser then reports `Unexpected token '<'`, window.DH
+# is never defined, and you get a blank page — while the deploy itself reports
+# success, because "/" really did return 200. tools/hostsim.js reproduces this
+# exactly. Drakehaven has no client-side routing to protect: it is one page at
+# "/", so the rule buys nothing and can only break the site.
 services:
   - type: web
     name: drakehaven-island
@@ -20,8 +30,3 @@ services:
       - path: /*
         name: Cache-Control
         value: public, max-age=0, must-revalidate
-    routes:
-      # single page: anything unknown falls back to the game
-      - type: rewrite
-        source: /*
-        destination: /index.html

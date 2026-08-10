@@ -156,7 +156,20 @@ tracked.filter(f => f.endsWith('.md') && !f.includes('/')).forEach(f => {
 });
 console.log('  allowlist: ' + [...allow].join(', '));
 
-/* ---------- 7b. a favicon, or every page load logs a 404 ---------- */
+/* ---------- 7a. a catch-all rewrite silently breaks a multi-file site ----------
+   `/*` -> `/index.html` also matches /js/util.js, so scripts come back as HTML,
+   the browser says "Unexpected token '<'", and the page is blank while the
+   deploy reports success. hostsim.js reproduces it. The game is one page with
+   no client-side routing, so no such rule is ever justified here. */
+section('no catch-all rewrite');
+const ry = fs.readFileSync(path.join(ROOT, 'render.yaml'), 'utf8');
+checks++;
+{
+  const routes = ry.replace(/^\s*#.*$/gm, '');          // ignore the explanation
+  if (/type:\s*rewrite/.test(routes) && /source:\s*['"]?\/\*/.test(routes))
+    bad('render.yaml declares a catch-all rewrite — it will serve HTML for /js/*.js and blank the page');
+  else console.log('  render.yaml has no rewrite that could swallow /js or /css');
+}
 section('favicon');
 checks++;
 if (!/rel="icon"/.test(html)) bad('no favicon declared — browsers will request /favicon.ico and log a 404');

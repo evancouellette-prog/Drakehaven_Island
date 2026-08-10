@@ -8,7 +8,36 @@ That simplicity is why deploy settings are the only thing that can go wrong.
 
 ---
 
-## The one rule
+## The two rules
+
+### 1. Never add a catch-all rewrite
+
+If your host has a Redirects/Rewrites setting, **leave it empty.** The usual
+single-page rule looks harmless:
+
+```
+Source  /*        Destination  /index.html        Action  Rewrite
+```
+
+`/*` matches everything — including `/js/util.js` and `/css/style.css`. Every
+script request is answered with the HTML page, so the browser reports
+
+```
+Uncaught SyntaxError: Unexpected token '<'
+```
+
+`window.DH` is never defined and **you get a blank page** — while the deploy
+reports success, because `/` really did return 200. This is the "deployed fine,
+page is broken" failure, and `tools/hostsim.js` reproduces it on demand.
+
+Drakehaven has no client-side routing to protect. It is one page at `/`. The
+rule buys nothing and can only break the site. Delete it.
+
+(The servers in this repo — `server.js`, `server.py`, `app.py` — do fall back
+to `index.html`, but only *after* looking for the file and not finding it. That
+is the safe order, and it is why they work.)
+
+### 2. A start command has to keep running
 
 A **web service** must start a process that *keeps running* and *listens on
 `$PORT`*. A command that finishes — `npm install`, `npm ci`, `pip install`,
@@ -16,7 +45,20 @@ A **web service** must start a process that *keeps running* and *listens on
 successfully, the host reports **"Application exited early"**, and restarts it
 forever.
 
-That is the whole failure mode. Build commands finish; start commands don't.
+Build commands finish; start commands don't.
+
+---
+
+## Reading the two failures apart
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Deploy log: `Application exited early`, restarting | Start Command is a build command | Start Command → `node server.js` |
+| Deploy succeeds, page is blank, console says `Unexpected token '<'` | Catch-all rewrite is serving HTML for your scripts | Delete the `/*` → `/index.html` rule |
+| Deploy succeeds, page is blank, console says `DH is not defined` | Same cause as above, or a script 404 | Open DevTools → Network, look for a script that isn't `200` + `text/javascript` |
+
+In every case the browser console names the cause. Open the deployed page,
+press F12, and read the first red line.
 
 ---
 
