@@ -46,7 +46,7 @@ DH.CLASSES = [
     features: {
       1: [
         { name: 'Rage', desc: 'Bonus action: for one minute you gain +2 damage on Strength attacks, resistance to bludgeoning, piercing and slashing, and advantage on Strength checks and saves. You cannot cast spells while raging.', effects: ['rage'] },
-        { name: 'Unarmoured Defence', desc: 'With no armour, your AC is 10 + DEX + CON.', effects: ['unarmored_defense:con'] }
+        { name: 'Unarmored Defence', desc: 'With no armor, your AC is 10 + DEX + CON.', effects: ['unarmored_defense:con'] }
       ],
       2: [
         { name: 'Reckless Attack', desc: 'Attack with advantage; attacks against you have advantage until your next turn.', effects: ['reckless_attack'] },
@@ -56,7 +56,7 @@ DH.CLASSES = [
       4: [{ name: 'Ability Score Improvement', desc: '+2 to one score or +1 to two.', effects: ['asi'] }],
       5: [
         { name: 'Extra Attack', desc: 'Attack twice with the Attack action.', effects: ['extra_attack:1'] },
-        { name: 'Fast Movement', desc: '+10 ft speed in no heavy armour.', effects: ['speed:10'] }
+        { name: 'Fast Movement', desc: '+10 ft speed in no heavy armor.', effects: ['speed:10'] }
       ],
       7: [{ name: 'Feral Instinct', desc: 'Advantage on initiative, and you can act while surprised if you rage first.', effects: ['adv_initiative'] }],
       8: [{ name: 'Ability Score Improvement', desc: '+2 to one score or +1 to two.', effects: ['asi'] }],
@@ -122,7 +122,7 @@ DH.CLASSES = [
       },
       {
         id: 'valor', name: 'College of Valour',
-        blurb: 'You sing from inside the fight, in armour, with a sword, which the other colleges find vulgar.',
+        blurb: 'You sing from inside the fight, in armor, with a sword, which the other colleges find vulgar.',
         features: { 3: [{ name: 'Combat Inspiration', desc: 'Inspiration can be added to a damage roll, or to AC against one attack.', effects: ['combat_inspiration', 'armor:medium', 'armor:shields', 'weapons:martial'] }], 10: [{ name: 'Extra Attack', desc: 'Attack twice with the Attack action.', effects: ['extra_attack:1'] }] }
       },
       {
@@ -305,12 +305,12 @@ DH.CLASSES = [
     kit: ['shortsword', 'dungeoneers_pack', 'dart'],
     features: {
       1: [
-        { name: 'Unarmoured Defence', desc: 'With no armour or shield, your AC is 10 + DEX + WIS.', effects: ['unarmored_defense:wis'] },
+        { name: 'Unarmored Defence', desc: 'With no armor or shield, your AC is 10 + DEX + WIS.', effects: ['unarmored_defense:wis'] },
         { name: 'Martial Arts', desc: 'Unarmed strikes and monk weapons use DEX and deal 1d4 (rising with level). After attacking, make one unarmed strike as a bonus action.', effects: ['martial_arts'] }
       ],
       2: [
         { name: 'Ki', desc: 'Ki points equal to your level. Spend them on Flurry of Blows, Patient Defence and Step of the Wind. Back on a short rest.', effects: ['ki'] },
-        { name: 'Unarmoured Movement', desc: '+10 ft speed without armour.', effects: ['speed:10'] }
+        { name: 'Unarmored Movement', desc: '+10 ft speed without armor.', effects: ['speed:10'] }
       ],
       3: [
         { name: 'Monastic Tradition', desc: 'The school that shaped you.', subclass: true },
@@ -327,7 +327,7 @@ DH.CLASSES = [
       6: [{ name: 'Ki-Empowered Strikes', desc: 'Your unarmed strikes count as magical.', effects: ['magic_fists'] }],
       7: [{ name: 'Evasion & Stillness of Mind', desc: 'Take no damage on successful DEX saves against area effects, and end a charm or fright on yourself as an action.', effects: ['evasion', 'stillness'] }],
       8: [{ name: 'Ability Score Improvement', desc: '+2 to one score or +1 to two.', effects: ['asi'] }],
-      9: [{ name: 'Unarmoured Movement improves', desc: 'You can run along walls and across liquids on your turn.', effects: ['wall_run'] }],
+      9: [{ name: 'Unarmored Movement improves', desc: 'You can run along walls and across liquids on your turn.', effects: ['wall_run'] }],
       10: [{ name: 'Purity of Body', desc: 'You are immune to disease and poison.', effects: ['immune:poison'] }]
     },
     subclasses: [
@@ -549,7 +549,7 @@ DH.CLASSES = [
         id: 'draconic', name: 'Draconic Bloodline',
         blurb: 'A dragon is in your ancestry, and on Drakehaven that fact will come up.',
         features: {
-          1: [{ name: 'Draconic Resilience', desc: '+1 hit point per level, and your unarmoured AC is 13 + DEX as scales surface on your skin.', effects: ['hp_per_level:1', 'draconic_ac'] }],
+          1: [{ name: 'Draconic Resilience', desc: '+1 hit point per level, and your unarmored AC is 13 + DEX as scales surface on your skin.', effects: ['hp_per_level:1', 'draconic_ac'] }],
           6: [{ name: 'Elemental Affinity', desc: 'Add your CHA modifier to one damage roll of your ancestry\'s type, and spend a sorcery point for resistance to it.', effects: ['elemental_affinity'] }]
         }
       },
@@ -720,7 +720,7 @@ DH.ABILITIES = [
 /* Fighting styles, offered to fighters, paladins, rangers and valour bards. */
 DH.FIGHTING_STYLES = [
   { id: 'archery', name: 'Archery', desc: '+2 to attack rolls with ranged weapons.' },
-  { id: 'defense', name: 'Defence', desc: '+1 AC while wearing armour.' },
+  { id: 'defense', name: 'Defence', desc: '+1 AC while wearing armor.' },
   { id: 'dueling', name: 'Duelling', desc: '+2 damage with a one-handed weapon and no other weapon in hand.' },
   { id: 'great_weapon', name: 'Great Weapon Fighting', desc: 'Reroll 1s and 2s on damage with two-handed weapons.' },
   { id: 'two_weapon', name: 'Two-Weapon Fighting', desc: 'Add your ability modifier to the off-hand attack\'s damage.' },
@@ -742,7 +742,7 @@ DH.INVOCATIONS = [
   { id: 'agonizing_blast', name: 'Agonising Blast', desc: 'Add your CHA modifier to each Eldritch Blast beam.' },
   { id: 'repelling_blast', name: 'Repelling Blast', desc: 'Eldritch Blast pushes creatures 10 ft away.' },
   { id: 'devils_sight', name: 'Devil\'s Sight', desc: 'See normally in darkness, magical or not, out to 120 ft.' },
-  { id: 'armor_of_shadows', name: 'Armour of Shadows', desc: 'Cast Mage Armor on yourself at will.' },
+  { id: 'armor_of_shadows', name: 'Armor of Shadows', desc: 'Cast Mage Armor on yourself at will.' },
   { id: 'beguiling_influence', name: 'Beguiling Influence', desc: 'Proficiency in Deception and Persuasion.' },
   { id: 'eldritch_sight', name: 'Eldritch Sight', desc: 'Cast Detect Magic at will.' },
   { id: 'thirsting_blade', name: 'Thirsting Blade', desc: 'Attack twice with your pact weapon. Requires Pact of the Blade and level 5.', min: 5 },

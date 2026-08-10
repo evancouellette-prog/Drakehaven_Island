@@ -124,10 +124,14 @@ DH.scenes.overworld = (function () {
     const gold = DH.ui.add(tr, 'div', 'plate small'); gold.id = 'hud-gold';
 
     const bl = DH.ui.add(hud, 'div', 'bl');
-    bl.appendChild(DH.ui.btn('Sheet (C)', '', () => openBook('sheet')));
-    bl.appendChild(DH.ui.btn('Journal (J)', '', () => openBook('quests')));
+    /* Everything is a button. The keys still work, but nothing is reachable
+       only by knowing a shortcut. */
+    bl.appendChild(DH.ui.btn('Sheet', '', () => openBook('sheet')));
+    bl.appendChild(DH.ui.btn('Inventory', '', () => openBook('inventory')));
+    bl.appendChild(DH.ui.btn('Journal', '', () => openBook('quests')));
     bl.appendChild(DH.ui.btn('Party', '', () => openBook('party')));
-    bl.appendChild(DH.ui.btn('Menu (Esc)', '', openMenu));
+    if (DH.game.pc() && DH.game.pc().pod) bl.appendChild(DH.ui.btn('Pod', '', () => openBook('pod')));
+    bl.appendChild(DH.ui.btn('Menu / Save', '', openMenu));
 
     const br = DH.ui.add(hud, 'div', 'br');
     br.id = 'hud-hint';
@@ -362,8 +366,12 @@ DH.scenes.overworld = (function () {
       case 'chest': return DH.game.flag('chest_' + DH.game.state.map + '_' + key) ? null : 'Open the chest';
       case 'workbench': return 'Use the workbench';
       case 'plot': return plotLabel(c);
-      case 'barrel': return 'Search the barrel';
-      case 'crate': return 'Search the crate';
+      /* Once searched these must stop offering, or the prompt stays up and every
+         press re-runs the search and answers "you have already been through this
+         one" — a loop you cannot leave except by walking away. */
+      case 'barrel': return searched(key) ? null : 'Search the barrel';
+      case 'crate': return searched(key) ? null : 'Search the crate';
+      case 'bones': return searched(key) ? null : 'Search the bones';
       case 'bookshelf': return 'Read the shelves';
       case 'sign': return 'Read the sign';
       case 'stall': return 'Look over the stall';
@@ -381,6 +389,7 @@ DH.scenes.overworld = (function () {
       default: return null;
     }
   }
+  function searched(key) { return DH.game.flag('searched_' + DH.game.state.map + '_' + key); }
   function nodeUsed(key) {
     const m = DH.game.state.nodes[DH.game.state.map] || {};
     return m[key] === DH.game.state.day;

@@ -85,7 +85,6 @@ DH.MONSTERS = {
     blurb: 'On the roof of the chandler\'s shop, shrieking without pause. It is not panicking. It is calling something.',
     traits: [
       { name: 'Pack Tactics', desc: 'Advantage on attacks when an ally is within 5 ft of the target.', effects: ['pack_tactics'] },
-      { name: 'Sunlight Sensitivity', desc: 'Disadvantage on attacks and Perception in sunlight.', effects: ['sunlight_sensitivity'] },
       { name: 'The Call', desc: 'Every third round it shrieks again, and something enormous gets closer.', effects: ['calling'] }
     ],
     actions: [

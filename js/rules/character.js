@@ -201,7 +201,7 @@ DH.char = (function () {
     ch.speed = sp;
     ch.size = (race && race.size) || 'Medium';
 
-    /* armour class */
+    /* armor class */
     ch.ac = computeAC(ch);
 
     /* initiative */
@@ -562,7 +562,7 @@ DH.char = (function () {
   }
   function unequip(ch, slot) { delete ch.equipped[slot]; derive(ch); }
   function autoEquip(ch) {
-    /* best armour we can use, best weapon for our primary stat */
+    /* best armor we can use, best weapon for our primary stat */
     const armors = ch.inv.map(s => DH.item(s.id)).filter(i => i && i.kind === 'armor' && i.armorKind !== 'shield' && canEquip(ch, i.id));
     armors.sort((a, b) => b.ac - a.ac);
     if (armors[0]) equip(ch, armors[0].id);
@@ -877,11 +877,20 @@ DH.char = (function () {
     }
     return spec;
   }
+  /* What a character is drawn holding. The equipped weapon wins, but the
+     fallback has to suit the class: a monk fights empty-handed and should not be
+     drawn brandishing a pair of fists like a prop, a warlock or sorcerer never
+     carries a bow, and a bard carries an instrument rather than a longsword. */
+  const CLASS_HELD = {
+    monk: 'none', sorcerer: 'staff', warlock: 'staff', wizard: 'staff',
+    bard: 'lute', druid: 'staff', cleric: 'mace', paladin: 'sword',
+    fighter: 'sword', barbarian: 'axe', ranger: 'bow', rogue: 'dagger'
+  };
   function weaponArt(ch) {
     if (ch.art) return ch.art;
     const mh = DH.item(ch.equipped && ch.equipped.mainHand);
     if (mh && mh.art) return mh.art;
-    return 'fists';
+    return CLASS_HELD[ch.classId] || 'none';
   }
 
   /* Short label for the UI. */

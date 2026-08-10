@@ -25,6 +25,9 @@ DH.scenes.combat = (function () {
   const DOWN_FRAMES = 26;     // sinking as it falls
   /* Squares a struck body is thrown, and where an attacker stops short of one. */
   const LUNGE_PX = 7;
+  /* Milliseconds to cross one five-foot square. Everything moved at 60-75ms,
+     which read as sliding rather than walking. */
+  const STEP_MS = 170;
   /* tiles lit for a moment to show what an area effect covered */
   let tileFx = [];
   /* which particle palette a spell's damage type flies as */
@@ -214,7 +217,9 @@ DH.scenes.combat = (function () {
     const fromX = u.px, fromY = u.py;
     u.x = gx; u.y = gy;
     const toX = ox + gx * CELL + CELL / 2, toY = oy + gy * CELL + CELL - 3;
-    const frames = 5, step = Math.max(8, Math.round((ms == null ? 75 : ms) / frames));
+    const total = ms == null ? STEP_MS : ms;
+    const frames = Math.max(5, Math.round(total / 16));
+    const step = Math.max(8, Math.round(total / frames));
     u.walking = true;
     for (let k = 1; k <= frames; k++) {
       u.px = fromX + (toX - fromX) * k / frames;
@@ -835,7 +840,9 @@ DH.scenes.combat = (function () {
     /* the Ending Action */
     out.push({
       id: 'ending', label: 'Ending Action', kind: 'ending', cost: 'ending',
-      enabled: eco.ending > 0 && eco.action === 0 && eco.bonus === 0 && eco.move <= 0,
+      /* Movement left over no longer blocks it: standing still is not the point
+         of an Ending Action, having used your Action and Bonus is. */
+      enabled: eco.ending > 0 && eco.action === 0 && eco.bonus === 0,
       tip: '<b>Ending Action</b><br>After your Action, Bonus Action and movement are all spent: one knowledge or observation check, or use a consumable — including feeding one to a willing creature within 5 ft.'
     });
     return out;
@@ -973,10 +980,22 @@ DH.scenes.combat = (function () {
     btns.appendChild(end);
   }
 
+  /* How hurt something looks, in the words a DM would actually use. */
+  function woundWord(ch) {
+    const f = ch.hpMax > 0 ? ch.hp / ch.hpMax : 0;
+    return f >= 1 ? 'Unhurt' : f > 0.75 ? 'Barely scratched' : f > 0.5 ? 'Bloodied'
+      : f > 0.25 ? 'Badly hurt' : f > 0 ? 'Barely standing' : 'Down';
+  }
   function showUnitTip(u, e) {
     const ch = u.ch;
     let html = '<b>' + DH.ui.esc(u.name) + '</b><br>';
-    html += 'HP ' + ch.hp + '/' + ch.hpMax + ' · AC ' + totalAC(u) + ' · Speed ' + ch.speed + ' ft<br>';
+    /* You do not get to read a monster's sheet. The health bar shows how hurt it
+       is; the exact hit points and AC are the DM's business. */
+    if (u.side === 'foe' && !u.isCharacter) {
+      html += woundWord(ch) + ' · Speed ' + ch.speed + ' ft<br>';
+    } else {
+      html += 'HP ' + ch.hp + '/' + ch.hpMax + ' · AC ' + totalAC(u) + ' · Speed ' + ch.speed + ' ft<br>';
+    }
     if (ch.blurb) html += '<span class="d">' + DH.ui.esc(ch.blurb) + '</span><br>';
     const conds = (ch.conditions || []).map(c => (DH.CONDITION_INFO[c.id] || { name: c.id }).name);
     if (conds.length) html += '<span class="d">' + conds.join(', ') + '</span><br>';
@@ -1248,7 +1267,7 @@ DH.scenes.combat = (function () {
     for (const step of path) {
       /* spike growth and other per-square hazards would go here */
       DH.audio.sfx('step');
-      await glideTo(u, step.x, step.y, 75);
+      await glideTo(u, step.x, step.y, STEP_MS);
       const c = cell(u.x, u.y);
       if (c.hazard === 'lava') { damage(u, DH.dice.roll('2d10').total, 'fire', {}); logLine(u.name + ' is burned by the lava.', 'hit'); }
       if (c.hazard === 'spore') {
@@ -1609,7 +1628,7 @@ DH.scenes.combat = (function () {
     if (!best || (best.x === u.x && best.y === u.y)) return;
     const path = U.tracePath(res, u.x, u.y, best.x, best.y);
     if (!path) return;
-    for (const s of path) await glideTo(u, s.x, s.y, 65);
+    for (const s of path) await glideTo(u, s.x, s.y, STEP_MS);
     u.eco.move -= best.cost;
   }
 
@@ -1697,7 +1716,7 @@ DH.scenes.combat = (function () {
     if (!best) return;
     const path = U.tracePath(res, u.x, u.y, best.x, best.y);
     if (!path) return;
-    for (const s of path) await glideTo(u, s.x, s.y, 60);
+    for (const s of path) await glideTo(u, s.x, s.y, STEP_MS);
     u.eco.move -= best.cost;
   }
 

@@ -43,18 +43,18 @@ DH.ITEMS = {
   claws: { name: 'Claws', kind: 'weapon', dmg: '1d4', type: 'slashing', props: ['finesse', 'light'], price: 0, cat: 'natural', art: 'fists' },
 
   /* ============================ ARMOUR ============================ */
-  padded: { name: 'Padded Armour', kind: 'armor', armorKind: 'light', ac: 11, stealthDis: true, price: 5 },
-  leather_armor: { name: 'Leather Armour', kind: 'armor', armorKind: 'light', ac: 11, price: 10 },
+  padded: { name: 'Padded Armor', kind: 'armor', armorKind: 'light', ac: 11, stealthDis: true, price: 5 },
+  leather_armor: { name: 'Leather Armor', kind: 'armor', armorKind: 'light', ac: 11, price: 10 },
   studded_leather: { name: 'Studded Leather', kind: 'armor', armorKind: 'light', ac: 12, price: 45 },
-  hide_armor: { name: 'Hide Armour', kind: 'armor', armorKind: 'medium', ac: 12, dexCap: 2, price: 10 },
+  hide_armor: { name: 'Hide Armor', kind: 'armor', armorKind: 'medium', ac: 12, dexCap: 2, price: 10 },
   chain_shirt: { name: 'Chain Shirt', kind: 'armor', armorKind: 'medium', ac: 13, dexCap: 2, price: 50 },
   scale_mail: { name: 'Scale Mail', kind: 'armor', armorKind: 'medium', ac: 14, dexCap: 2, stealthDis: true, price: 50 },
   breastplate: { name: 'Breastplate', kind: 'armor', armorKind: 'medium', ac: 14, dexCap: 2, price: 400 },
   half_plate: { name: 'Half Plate', kind: 'armor', armorKind: 'medium', ac: 15, dexCap: 2, stealthDis: true, price: 750 },
   ring_mail: { name: 'Ring Mail', kind: 'armor', armorKind: 'heavy', ac: 14, dexCap: 0, stealthDis: true, price: 30 },
   chain_mail: { name: 'Chain Mail', kind: 'armor', armorKind: 'heavy', ac: 16, dexCap: 0, stealthDis: true, str: 13, price: 75 },
-  splint: { name: 'Splint Armour', kind: 'armor', armorKind: 'heavy', ac: 17, dexCap: 0, stealthDis: true, str: 15, price: 200 },
-  plate: { name: 'Plate Armour', kind: 'armor', armorKind: 'heavy', ac: 18, dexCap: 0, stealthDis: true, str: 15, price: 1500 },
+  splint: { name: 'Splint Armor', kind: 'armor', armorKind: 'heavy', ac: 17, dexCap: 0, stealthDis: true, str: 15, price: 200 },
+  plate: { name: 'Plate Armor', kind: 'armor', armorKind: 'heavy', ac: 18, dexCap: 0, stealthDis: true, str: 15, price: 1500 },
   shield: { name: 'Shield', kind: 'armor', armorKind: 'shield', acBonus: 2, price: 10 },
 
   /* ============================ THE POTION STAND ============================

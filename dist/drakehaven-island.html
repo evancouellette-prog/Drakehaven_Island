@@ -178,7 +178,12 @@ input[type=range]{width:100%; accent-color:var(--gold)}
 /* ================= HUD (overworld) ================= */
 #hud{position:absolute; inset:0; pointer-events:none}
 #hud .tl{position:absolute; left:12px; top:12px; display:flex; flex-direction:column; gap:6px}
-#hud .tr{position:absolute; right:12px; top:12px; text-align:right; display:flex; flex-direction:column; gap:6px; align-items:flex-end}
+#hud .tr{position:absolute; right:12px; top:12px; text-align:right; display:flex; flex-direction:column;
+  gap:6px; align-items:flex-end; max-width:min(46vw,420px)}
+/* A long place name — "The Deck, The Mary Parker" — used to wrap inside this
+   plate and stack down the screen, reading as the name repeated over and over.
+   One line, clipped if it has to be. */
+#hud .tr .plate{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%}
 #hud .bl{position:absolute; left:12px; bottom:12px; display:flex; gap:6px; pointer-events:auto}
 #hud .br{position:absolute; right:12px; bottom:12px; font-size:11px; color:var(--ink-faint); text-align:right; line-height:1.7}
 .hpbar{width:190px; background:#0d1220; border:2px solid var(--edge); padding:3px; position:relative}
@@ -1812,6 +1817,16 @@ DH.gfx = (function () {
       case 'spear': P(-1 * s, -16 * s, 2 * s, 22 * s, C.wood); poly([[0, -21 * s], [2.5 * s, -15 * s], [-2.5 * s, -15 * s]], C.metal2, true); break;
       case 'hammer': P(-1 * s, -11 * s, 2 * s, 14 * s, C.wood3); P(-4 * s, -15 * s, 8 * s, 5 * s, C.stone2); break;
       case 'fists': P(-2 * s, -3 * s, 4 * s, 4 * s, o && o.brass ? '#4a7a9a' : '#d8a878'); break;
+      case 'lute':
+        /* body, soundhole, neck, and four strings down it */
+        ctx.fillStyle = '#8a613a'; ctx.beginPath(); ctx.ellipse(0, -4 * s, 4 * s, 5 * s, 0, 0, 6.3); ctx.fill();
+        P(-1.2 * s, -9 * s, 2.4 * s, 1 * s, '#6b4a2c');
+        ctx.fillStyle = '#2b1c10'; ctx.beginPath(); ctx.arc(0, -4 * s, 1.6 * s, 0, 6.3); ctx.fill();
+        P(-.8 * s, -17 * s, 1.6 * s, 9 * s, '#6b4a2c');
+        P(-1.4 * s, -18 * s, 2.8 * s, 1.4 * s, '#4a3220');
+        for (let i = 0; i < 3; i++) P(-.6 * s + i * .6 * s, -17 * s, .3 * s, 13 * s, '#e8dcc0');
+        break;
+      case 'none': break;
       case 'shield': break;
       default: break;
     }
@@ -2878,12 +2893,12 @@ DH.RACES = [
   },
   {
     id: 'mountain_dwarf', name: 'Mountain Dwarf', size: 'Medium', speed: 25,
-    blurb: 'Born inside the rock and armoured before they can walk. If a mountain dwarf tells you a tunnel is unsafe, leave.',
+    blurb: 'Born inside the rock and armored before they can walk. If a mountain dwarf tells you a tunnel is unsafe, leave.',
     bonus: { str: 2, con: 2 },
     traits: [
       { name: 'Darkvision', desc: 'See 60 ft in dim light as though it were bright.', effects: ['darkvision:60'] },
       { name: 'Dwarven Resilience', desc: 'Advantage on saves against poison, and resistance to poison damage.', effects: ['adv_vs_poison', 'resist:poison'] },
-      { name: 'Dwarven Armour Training', desc: 'Proficiency with light and medium armour.', effects: ['armor:light', 'armor:medium'] },
+      { name: 'Dwarven Armor Training', desc: 'Proficiency with light and medium armor.', effects: ['armor:light', 'armor:medium'] },
       { name: 'Stonecunning', desc: 'Double proficiency on History checks about stonework.', effects: ['stonecunning'] }
     ],
     look: { skin: ['#e8c0a0', '#d8a878', '#b8845a', '#8a5f3c'], hair: ['#5a3a22', '#7a2a20', '#c8c4b0', '#2b1f16'], flags: { beard: true, short: true } }
@@ -3013,8 +3028,7 @@ DH.RACES = [
     traits: [
       { name: 'Darkvision', desc: 'See 60 ft in dim light as though it were bright.', effects: ['darkvision:60'] },
       { name: 'Pack Tactics', desc: 'Advantage on attacks when an ally is within 5 ft of your target.', effects: ['pack_tactics'] },
-      { name: 'Grovel, Cower and Beg', desc: 'As an action, give allies within 10 ft advantage on their next attack.', effects: ['grovel'] },
-      { name: 'Sunlight Sensitivity', desc: 'Disadvantage on attacks and Perception in direct sunlight.', effects: ['sunlight_sensitivity'] }
+      { name: 'Grovel, Cower and Beg', desc: 'As an action, give allies within 10 ft advantage on their next attack.', effects: ['grovel'] }
     ],
     look: {
       skin: ['#a8453a', '#8a6a3a', '#3a6b5f', '#6a4a7a', '#c2954a'],
@@ -3117,7 +3131,7 @@ DH.CLASSES = [
     features: {
       1: [
         { name: 'Rage', desc: 'Bonus action: for one minute you gain +2 damage on Strength attacks, resistance to bludgeoning, piercing and slashing, and advantage on Strength checks and saves. You cannot cast spells while raging.', effects: ['rage'] },
-        { name: 'Unarmoured Defence', desc: 'With no armour, your AC is 10 + DEX + CON.', effects: ['unarmored_defense:con'] }
+        { name: 'Unarmored Defence', desc: 'With no armor, your AC is 10 + DEX + CON.', effects: ['unarmored_defense:con'] }
       ],
       2: [
         { name: 'Reckless Attack', desc: 'Attack with advantage; attacks against you have advantage until your next turn.', effects: ['reckless_attack'] },
@@ -3127,7 +3141,7 @@ DH.CLASSES = [
       4: [{ name: 'Ability Score Improvement', desc: '+2 to one score or +1 to two.', effects: ['asi'] }],
       5: [
         { name: 'Extra Attack', desc: 'Attack twice with the Attack action.', effects: ['extra_attack:1'] },
-        { name: 'Fast Movement', desc: '+10 ft speed in no heavy armour.', effects: ['speed:10'] }
+        { name: 'Fast Movement', desc: '+10 ft speed in no heavy armor.', effects: ['speed:10'] }
       ],
       7: [{ name: 'Feral Instinct', desc: 'Advantage on initiative, and you can act while surprised if you rage first.', effects: ['adv_initiative'] }],
       8: [{ name: 'Ability Score Improvement', desc: '+2 to one score or +1 to two.', effects: ['asi'] }],
@@ -3193,7 +3207,7 @@ DH.CLASSES = [
       },
       {
         id: 'valor', name: 'College of Valour',
-        blurb: 'You sing from inside the fight, in armour, with a sword, which the other colleges find vulgar.',
+        blurb: 'You sing from inside the fight, in armor, with a sword, which the other colleges find vulgar.',
         features: { 3: [{ name: 'Combat Inspiration', desc: 'Inspiration can be added to a damage roll, or to AC against one attack.', effects: ['combat_inspiration', 'armor:medium', 'armor:shields', 'weapons:martial'] }], 10: [{ name: 'Extra Attack', desc: 'Attack twice with the Attack action.', effects: ['extra_attack:1'] }] }
       },
       {
@@ -3376,12 +3390,12 @@ DH.CLASSES = [
     kit: ['shortsword', 'dungeoneers_pack', 'dart'],
     features: {
       1: [
-        { name: 'Unarmoured Defence', desc: 'With no armour or shield, your AC is 10 + DEX + WIS.', effects: ['unarmored_defense:wis'] },
+        { name: 'Unarmored Defence', desc: 'With no armor or shield, your AC is 10 + DEX + WIS.', effects: ['unarmored_defense:wis'] },
         { name: 'Martial Arts', desc: 'Unarmed strikes and monk weapons use DEX and deal 1d4 (rising with level). After attacking, make one unarmed strike as a bonus action.', effects: ['martial_arts'] }
       ],
       2: [
         { name: 'Ki', desc: 'Ki points equal to your level. Spend them on Flurry of Blows, Patient Defence and Step of the Wind. Back on a short rest.', effects: ['ki'] },
-        { name: 'Unarmoured Movement', desc: '+10 ft speed without armour.', effects: ['speed:10'] }
+        { name: 'Unarmored Movement', desc: '+10 ft speed without armor.', effects: ['speed:10'] }
       ],
       3: [
         { name: 'Monastic Tradition', desc: 'The school that shaped you.', subclass: true },
@@ -3398,7 +3412,7 @@ DH.CLASSES = [
       6: [{ name: 'Ki-Empowered Strikes', desc: 'Your unarmed strikes count as magical.', effects: ['magic_fists'] }],
       7: [{ name: 'Evasion & Stillness of Mind', desc: 'Take no damage on successful DEX saves against area effects, and end a charm or fright on yourself as an action.', effects: ['evasion', 'stillness'] }],
       8: [{ name: 'Ability Score Improvement', desc: '+2 to one score or +1 to two.', effects: ['asi'] }],
-      9: [{ name: 'Unarmoured Movement improves', desc: 'You can run along walls and across liquids on your turn.', effects: ['wall_run'] }],
+      9: [{ name: 'Unarmored Movement improves', desc: 'You can run along walls and across liquids on your turn.', effects: ['wall_run'] }],
       10: [{ name: 'Purity of Body', desc: 'You are immune to disease and poison.', effects: ['immune:poison'] }]
     },
     subclasses: [
@@ -3620,7 +3634,7 @@ DH.CLASSES = [
         id: 'draconic', name: 'Draconic Bloodline',
         blurb: 'A dragon is in your ancestry, and on Drakehaven that fact will come up.',
         features: {
-          1: [{ name: 'Draconic Resilience', desc: '+1 hit point per level, and your unarmoured AC is 13 + DEX as scales surface on your skin.', effects: ['hp_per_level:1', 'draconic_ac'] }],
+          1: [{ name: 'Draconic Resilience', desc: '+1 hit point per level, and your unarmored AC is 13 + DEX as scales surface on your skin.', effects: ['hp_per_level:1', 'draconic_ac'] }],
           6: [{ name: 'Elemental Affinity', desc: 'Add your CHA modifier to one damage roll of your ancestry\'s type, and spend a sorcery point for resistance to it.', effects: ['elemental_affinity'] }]
         }
       },
@@ -3791,7 +3805,7 @@ DH.ABILITIES = [
 /* Fighting styles, offered to fighters, paladins, rangers and valour bards. */
 DH.FIGHTING_STYLES = [
   { id: 'archery', name: 'Archery', desc: '+2 to attack rolls with ranged weapons.' },
-  { id: 'defense', name: 'Defence', desc: '+1 AC while wearing armour.' },
+  { id: 'defense', name: 'Defence', desc: '+1 AC while wearing armor.' },
   { id: 'dueling', name: 'Duelling', desc: '+2 damage with a one-handed weapon and no other weapon in hand.' },
   { id: 'great_weapon', name: 'Great Weapon Fighting', desc: 'Reroll 1s and 2s on damage with two-handed weapons.' },
   { id: 'two_weapon', name: 'Two-Weapon Fighting', desc: 'Add your ability modifier to the off-hand attack\'s damage.' },
@@ -3813,7 +3827,7 @@ DH.INVOCATIONS = [
   { id: 'agonizing_blast', name: 'Agonising Blast', desc: 'Add your CHA modifier to each Eldritch Blast beam.' },
   { id: 'repelling_blast', name: 'Repelling Blast', desc: 'Eldritch Blast pushes creatures 10 ft away.' },
   { id: 'devils_sight', name: 'Devil\'s Sight', desc: 'See normally in darkness, magical or not, out to 120 ft.' },
-  { id: 'armor_of_shadows', name: 'Armour of Shadows', desc: 'Cast Mage Armor on yourself at will.' },
+  { id: 'armor_of_shadows', name: 'Armor of Shadows', desc: 'Cast Mage Armor on yourself at will.' },
   { id: 'beguiling_influence', name: 'Beguiling Influence', desc: 'Proficiency in Deception and Persuasion.' },
   { id: 'eldritch_sight', name: 'Eldritch Sight', desc: 'Cast Detect Magic at will.' },
   { id: 'thirsting_blade', name: 'Thirsting Blade', desc: 'Attack twice with your pact weapon. Requires Pact of the Blade and level 5.', min: 5 },
@@ -3961,7 +3975,7 @@ DH.SPELLS = [
   /* ============================ CANTRIPS ============================ */
   { id: 'fire_bolt', name: 'Fire Bolt', lv: 0, lists: 'ws', school: 'Evocation', cast: 'action', range: 120, tgt: 'one', roll: 'attack', dmg: '1d10', type: 'fire', cantripScale: true, desc: 'A mote of flame streaks at a creature or object. Flammable things it misses catch fire.' },
   { id: 'ray_of_frost', name: 'Ray of Frost', lv: 0, lists: 'ws', school: 'Evocation', cast: 'action', range: 60, tgt: 'one', roll: 'attack', dmg: '1d8', type: 'cold', cantripScale: true, slow: 10, desc: 'A beam of freezing air. The target\'s speed drops by 10 ft until your next turn.' },
-  { id: 'shocking_grasp', name: 'Shocking Grasp', lv: 0, lists: 'ws', school: 'Evocation', cast: 'action', range: 5, tgt: 'one', roll: 'attack', dmg: '1d8', type: 'lightning', cantripScale: true, advVsMetal: true, desc: 'Lightning leaps from your hand. The target cannot take reactions until its next turn, and you have advantage if it wears metal armour.' },
+  { id: 'shocking_grasp', name: 'Shocking Grasp', lv: 0, lists: 'ws', school: 'Evocation', cast: 'action', range: 5, tgt: 'one', roll: 'attack', dmg: '1d8', type: 'lightning', cantripScale: true, advVsMetal: true, desc: 'Lightning leaps from your hand. The target cannot take reactions until its next turn, and you have advantage if it wears metal armor.' },
   { id: 'acid_splash', name: 'Acid Splash', lv: 0, lists: 'ws', school: 'Conjuration', cast: 'action', range: 60, tgt: 'two', roll: 'save', save: 'dex', dmg: '1d6', type: 'acid', cantripScale: true, desc: 'A bubble of acid bursts over one creature, or two that stand within 5 ft of each other.' },
   { id: 'chill_touch', name: 'Chill Touch', lv: 0, lists: 'wsk', school: 'Necromancy', cast: 'action', range: 120, tgt: 'one', roll: 'attack', dmg: '1d8', type: 'necrotic', cantripScale: true, noHeal: true, desc: 'A spectral hand grips the target. It cannot regain hit points until your next turn, and undead struck also have disadvantage on attacks against you.' },
   { id: 'eldritch_blast', name: 'Eldritch Blast', lv: 0, lists: 'k', school: 'Evocation', cast: 'action', range: 120, tgt: 'one', roll: 'attack', dmg: '1d10', type: 'force', beams: true, desc: 'A beam of crackling force. At higher levels you fire more beams, and each can pick its own target.' },
@@ -3991,7 +4005,7 @@ DH.SPELLS = [
   { id: 'cure_wounds', name: 'Cure Wounds', lv: 1, lists: 'cdbpr', school: 'Evocation', cast: 'action', range: 5, tgt: 'ally', heal: '1d8', up: '1d8', addMod: true, desc: 'Touch a creature and knit it back together.', ai: 5 },
   { id: 'healing_word', name: 'Healing Word', lv: 1, lists: 'cdb', school: 'Evocation', cast: 'bonus', range: 60, tgt: 'ally', heal: '1d4', up: '1d4', addMod: true, desc: 'A word of power that heals at range, as a bonus action. The reason nobody stays down.', ai: 6 },
   { id: 'shield', name: 'Shield', lv: 1, lists: 'ws', school: 'Abjuration', cast: 'reaction', range: 0, tgt: 'self', buff: { ac: 5 }, dur: 1, desc: 'Reaction: +5 AC until your next turn, including against the attack that triggered it.', ai: 3 },
-  { id: 'mage_armor', name: 'Mage Armour', lv: 1, lists: 'ws', school: 'Abjuration', cast: 'action', range: 5, tgt: 'ally', buff: { baseAc: 13 }, dur: 480, desc: 'A shell of force. Base AC becomes 13 + DEX while you wear no armour.', ai: 1 },
+  { id: 'mage_armor', name: 'Mage Armor', lv: 1, lists: 'ws', school: 'Abjuration', cast: 'action', range: 5, tgt: 'ally', buff: { baseAc: 13 }, dur: 480, desc: 'A shell of force. Base AC becomes 13 + DEX while you wear no armor.', ai: 1 },
   { id: 'sleep', name: 'Sleep', lv: 1, lists: 'wsb', school: 'Enchantment', cast: 'action', range: 90, tgt: 'area', shape: { k: 'sphere', size: 20 }, roll: 'hpPool', pool: '5d8', up: '2d8', cond: 'unconscious', dur: 10, desc: 'Roll 5d8; creatures in the area fall unconscious in order of lowest hit points until the pool runs out.', ai: 4 },
   { id: 'faerie_fire', name: 'Faerie Fire', lv: 1, lists: 'db', school: 'Evocation', cast: 'action', range: 60, tgt: 'area', shape: { k: 'cube', size: 20 }, roll: 'save', save: 'dex', cond: 'outlined', dur: 10, conc: true, desc: 'Everything in the cube is outlined in light. Attacks against them have advantage, and they cannot benefit from invisibility.', ai: 5 },
   { id: 'bless', name: 'Bless', lv: 1, lists: 'cp', school: 'Enchantment', cast: 'action', range: 30, tgt: 'allies', count: 3, buff: { attackBonus: '1d4', saveBonus: '1d4' }, dur: 10, conc: true, desc: 'Three creatures add 1d4 to every attack roll and saving throw.', ai: 5 },
@@ -4184,18 +4198,18 @@ DH.ITEMS = {
   claws: { name: 'Claws', kind: 'weapon', dmg: '1d4', type: 'slashing', props: ['finesse', 'light'], price: 0, cat: 'natural', art: 'fists' },
 
   /* ============================ ARMOUR ============================ */
-  padded: { name: 'Padded Armour', kind: 'armor', armorKind: 'light', ac: 11, stealthDis: true, price: 5 },
-  leather_armor: { name: 'Leather Armour', kind: 'armor', armorKind: 'light', ac: 11, price: 10 },
+  padded: { name: 'Padded Armor', kind: 'armor', armorKind: 'light', ac: 11, stealthDis: true, price: 5 },
+  leather_armor: { name: 'Leather Armor', kind: 'armor', armorKind: 'light', ac: 11, price: 10 },
   studded_leather: { name: 'Studded Leather', kind: 'armor', armorKind: 'light', ac: 12, price: 45 },
-  hide_armor: { name: 'Hide Armour', kind: 'armor', armorKind: 'medium', ac: 12, dexCap: 2, price: 10 },
+  hide_armor: { name: 'Hide Armor', kind: 'armor', armorKind: 'medium', ac: 12, dexCap: 2, price: 10 },
   chain_shirt: { name: 'Chain Shirt', kind: 'armor', armorKind: 'medium', ac: 13, dexCap: 2, price: 50 },
   scale_mail: { name: 'Scale Mail', kind: 'armor', armorKind: 'medium', ac: 14, dexCap: 2, stealthDis: true, price: 50 },
   breastplate: { name: 'Breastplate', kind: 'armor', armorKind: 'medium', ac: 14, dexCap: 2, price: 400 },
   half_plate: { name: 'Half Plate', kind: 'armor', armorKind: 'medium', ac: 15, dexCap: 2, stealthDis: true, price: 750 },
   ring_mail: { name: 'Ring Mail', kind: 'armor', armorKind: 'heavy', ac: 14, dexCap: 0, stealthDis: true, price: 30 },
   chain_mail: { name: 'Chain Mail', kind: 'armor', armorKind: 'heavy', ac: 16, dexCap: 0, stealthDis: true, str: 13, price: 75 },
-  splint: { name: 'Splint Armour', kind: 'armor', armorKind: 'heavy', ac: 17, dexCap: 0, stealthDis: true, str: 15, price: 200 },
-  plate: { name: 'Plate Armour', kind: 'armor', armorKind: 'heavy', ac: 18, dexCap: 0, stealthDis: true, str: 15, price: 1500 },
+  splint: { name: 'Splint Armor', kind: 'armor', armorKind: 'heavy', ac: 17, dexCap: 0, stealthDis: true, str: 15, price: 200 },
+  plate: { name: 'Plate Armor', kind: 'armor', armorKind: 'heavy', ac: 18, dexCap: 0, stealthDis: true, str: 15, price: 1500 },
   shield: { name: 'Shield', kind: 'armor', armorKind: 'shield', acBonus: 2, price: 10 },
 
   /* ============================ THE POTION STAND ============================
@@ -4637,7 +4651,6 @@ DH.MONSTERS = {
     blurb: 'On the roof of the chandler\'s shop, shrieking without pause. It is not panicking. It is calling something.',
     traits: [
       { name: 'Pack Tactics', desc: 'Advantage on attacks when an ally is within 5 ft of the target.', effects: ['pack_tactics'] },
-      { name: 'Sunlight Sensitivity', desc: 'Disadvantage on attacks and Perception in sunlight.', effects: ['sunlight_sensitivity'] },
       { name: 'The Call', desc: 'Every third round it shrieks again, and something enormous gets closer.', effects: ['calling'] }
     ],
     actions: [
@@ -8378,7 +8391,7 @@ DH.char = (function () {
     ch.speed = sp;
     ch.size = (race && race.size) || 'Medium';
 
-    /* armour class */
+    /* armor class */
     ch.ac = computeAC(ch);
 
     /* initiative */
@@ -8739,7 +8752,7 @@ DH.char = (function () {
   }
   function unequip(ch, slot) { delete ch.equipped[slot]; derive(ch); }
   function autoEquip(ch) {
-    /* best armour we can use, best weapon for our primary stat */
+    /* best armor we can use, best weapon for our primary stat */
     const armors = ch.inv.map(s => DH.item(s.id)).filter(i => i && i.kind === 'armor' && i.armorKind !== 'shield' && canEquip(ch, i.id));
     armors.sort((a, b) => b.ac - a.ac);
     if (armors[0]) equip(ch, armors[0].id);
@@ -9054,11 +9067,20 @@ DH.char = (function () {
     }
     return spec;
   }
+  /* What a character is drawn holding. The equipped weapon wins, but the
+     fallback has to suit the class: a monk fights empty-handed and should not be
+     drawn brandishing a pair of fists like a prop, a warlock or sorcerer never
+     carries a bow, and a bard carries an instrument rather than a longsword. */
+  const CLASS_HELD = {
+    monk: 'none', sorcerer: 'staff', warlock: 'staff', wizard: 'staff',
+    bard: 'lute', druid: 'staff', cleric: 'mace', paladin: 'sword',
+    fighter: 'sword', barbarian: 'axe', ranger: 'bow', rogue: 'dagger'
+  };
   function weaponArt(ch) {
     if (ch.art) return ch.art;
     const mh = DH.item(ch.equipped && ch.equipped.mainHand);
     if (mh && mh.art) return mh.art;
-    return 'fists';
+    return CLASS_HELD[ch.classId] || 'none';
   }
 
   /* Short label for the UI. */
@@ -9472,7 +9494,6 @@ DH.scenes.title = (function () {
     root.appendChild(ui);
 
     const logo = DH.ui.add(ui, 'div', 'logo', 'DRAKEHAVEN<em>ISLAND</em>');
-    DH.ui.add(ui, 'div', 'tag', 'A P.A.C.T. POSTING · FIVE ADVENTURERS · ONE VERY ANGRY ISLAND');
 
     const menu = DH.ui.add(ui, 'div'); menu.id = 'title-menu';
     const anySave = [1, 2, 3].some(s => DH.save.has(s));
@@ -9484,7 +9505,6 @@ DH.scenes.title = (function () {
     menu.appendChild(DH.ui.btn('How to Play', '', howTo));
     menu.appendChild(DH.ui.btn('House Rules', '', houseRules));
     menu.appendChild(DH.ui.btn('Settings', '', settings));
-    menu.appendChild(DH.ui.btn('Credits', '', credits));
 
     DH.ui.add(ui, 'div', 'foot', 'Click anywhere first to let the sound in. Everything you hear is generated live.');
     DH.ui.add(ui, 'div', 'vsn', 'v1.0');
@@ -10068,7 +10088,7 @@ DH.scenes.charcreate = (function () {
     if (c.flavor) DH.ui.add(mid, 'div', 'prose faint', DH.ui.esc('“' + c.flavor + '”'));
     const tags = DH.ui.add(mid, 'div', 'tagrow');
     const bits = [];
-    if (c.armor && c.armor.length) bits.push('Armour: ' + c.armor.join(', '));
+    if (c.armor && c.armor.length) bits.push('Armor: ' + c.armor.join(', '));
     bits.push('Weapons: ' + (c.weapons || []).slice(0, 4).join(', '));
     if (c.caster) bits.push('Casts with ' + c.caster.ability.toUpperCase());
     tags.innerHTML = bits.map(b => '<span class="tag">' + DH.ui.esc(b) + '</span>').join('');
@@ -10138,8 +10158,7 @@ DH.scenes.charcreate = (function () {
   function stepAbilities(list, mid) {
     const methods = [
       { id: 'pointbuy', name: 'Point Buy', bit: '27 points, nothing above 15 before racials' },
-      { id: 'array', name: 'Standard Array', bit: '15, 14, 13, 12, 10, 8 — assign them' },
-      { id: 'roll', name: 'Roll 4d6, Drop Lowest', bit: 'Fate decides. It may be unkind.' }
+      { id: 'array', name: 'Standard Array', bit: '15, 14, 13, 12, 10, 8 — assign them' }
     ];
     methods.forEach(m => {
       const o = DH.ui.el('div', 'opt' + (draft.method === m.id ? ' on' : ''));
@@ -10736,10 +10755,14 @@ DH.scenes.overworld = (function () {
     const gold = DH.ui.add(tr, 'div', 'plate small'); gold.id = 'hud-gold';
 
     const bl = DH.ui.add(hud, 'div', 'bl');
-    bl.appendChild(DH.ui.btn('Sheet (C)', '', () => openBook('sheet')));
-    bl.appendChild(DH.ui.btn('Journal (J)', '', () => openBook('quests')));
+    /* Everything is a button. The keys still work, but nothing is reachable
+       only by knowing a shortcut. */
+    bl.appendChild(DH.ui.btn('Sheet', '', () => openBook('sheet')));
+    bl.appendChild(DH.ui.btn('Inventory', '', () => openBook('inventory')));
+    bl.appendChild(DH.ui.btn('Journal', '', () => openBook('quests')));
     bl.appendChild(DH.ui.btn('Party', '', () => openBook('party')));
-    bl.appendChild(DH.ui.btn('Menu (Esc)', '', openMenu));
+    if (DH.game.pc() && DH.game.pc().pod) bl.appendChild(DH.ui.btn('Pod', '', () => openBook('pod')));
+    bl.appendChild(DH.ui.btn('Menu / Save', '', openMenu));
 
     const br = DH.ui.add(hud, 'div', 'br');
     br.id = 'hud-hint';
@@ -10974,8 +10997,12 @@ DH.scenes.overworld = (function () {
       case 'chest': return DH.game.flag('chest_' + DH.game.state.map + '_' + key) ? null : 'Open the chest';
       case 'workbench': return 'Use the workbench';
       case 'plot': return plotLabel(c);
-      case 'barrel': return 'Search the barrel';
-      case 'crate': return 'Search the crate';
+      /* Once searched these must stop offering, or the prompt stays up and every
+         press re-runs the search and answers "you have already been through this
+         one" — a loop you cannot leave except by walking away. */
+      case 'barrel': return searched(key) ? null : 'Search the barrel';
+      case 'crate': return searched(key) ? null : 'Search the crate';
+      case 'bones': return searched(key) ? null : 'Search the bones';
       case 'bookshelf': return 'Read the shelves';
       case 'sign': return 'Read the sign';
       case 'stall': return 'Look over the stall';
@@ -10993,6 +11020,7 @@ DH.scenes.overworld = (function () {
       default: return null;
     }
   }
+  function searched(key) { return DH.game.flag('searched_' + DH.game.state.map + '_' + key); }
   function nodeUsed(key) {
     const m = DH.game.state.nodes[DH.game.state.map] || {};
     return m[key] === DH.game.state.day;
@@ -11334,6 +11362,9 @@ DH.scenes.combat = (function () {
   const DOWN_FRAMES = 26;     // sinking as it falls
   /* Squares a struck body is thrown, and where an attacker stops short of one. */
   const LUNGE_PX = 7;
+  /* Milliseconds to cross one five-foot square. Everything moved at 60-75ms,
+     which read as sliding rather than walking. */
+  const STEP_MS = 170;
   /* tiles lit for a moment to show what an area effect covered */
   let tileFx = [];
   /* which particle palette a spell's damage type flies as */
@@ -11523,7 +11554,9 @@ DH.scenes.combat = (function () {
     const fromX = u.px, fromY = u.py;
     u.x = gx; u.y = gy;
     const toX = ox + gx * CELL + CELL / 2, toY = oy + gy * CELL + CELL - 3;
-    const frames = 5, step = Math.max(8, Math.round((ms == null ? 75 : ms) / frames));
+    const total = ms == null ? STEP_MS : ms;
+    const frames = Math.max(5, Math.round(total / 16));
+    const step = Math.max(8, Math.round(total / frames));
     u.walking = true;
     for (let k = 1; k <= frames; k++) {
       u.px = fromX + (toX - fromX) * k / frames;
@@ -12144,7 +12177,9 @@ DH.scenes.combat = (function () {
     /* the Ending Action */
     out.push({
       id: 'ending', label: 'Ending Action', kind: 'ending', cost: 'ending',
-      enabled: eco.ending > 0 && eco.action === 0 && eco.bonus === 0 && eco.move <= 0,
+      /* Movement left over no longer blocks it: standing still is not the point
+         of an Ending Action, having used your Action and Bonus is. */
+      enabled: eco.ending > 0 && eco.action === 0 && eco.bonus === 0,
       tip: '<b>Ending Action</b><br>After your Action, Bonus Action and movement are all spent: one knowledge or observation check, or use a consumable — including feeding one to a willing creature within 5 ft.'
     });
     return out;
@@ -12282,10 +12317,22 @@ DH.scenes.combat = (function () {
     btns.appendChild(end);
   }
 
+  /* How hurt something looks, in the words a DM would actually use. */
+  function woundWord(ch) {
+    const f = ch.hpMax > 0 ? ch.hp / ch.hpMax : 0;
+    return f >= 1 ? 'Unhurt' : f > 0.75 ? 'Barely scratched' : f > 0.5 ? 'Bloodied'
+      : f > 0.25 ? 'Badly hurt' : f > 0 ? 'Barely standing' : 'Down';
+  }
   function showUnitTip(u, e) {
     const ch = u.ch;
     let html = '<b>' + DH.ui.esc(u.name) + '</b><br>';
-    html += 'HP ' + ch.hp + '/' + ch.hpMax + ' · AC ' + totalAC(u) + ' · Speed ' + ch.speed + ' ft<br>';
+    /* You do not get to read a monster's sheet. The health bar shows how hurt it
+       is; the exact hit points and AC are the DM's business. */
+    if (u.side === 'foe' && !u.isCharacter) {
+      html += woundWord(ch) + ' · Speed ' + ch.speed + ' ft<br>';
+    } else {
+      html += 'HP ' + ch.hp + '/' + ch.hpMax + ' · AC ' + totalAC(u) + ' · Speed ' + ch.speed + ' ft<br>';
+    }
     if (ch.blurb) html += '<span class="d">' + DH.ui.esc(ch.blurb) + '</span><br>';
     const conds = (ch.conditions || []).map(c => (DH.CONDITION_INFO[c.id] || { name: c.id }).name);
     if (conds.length) html += '<span class="d">' + conds.join(', ') + '</span><br>';
@@ -12557,7 +12604,7 @@ DH.scenes.combat = (function () {
     for (const step of path) {
       /* spike growth and other per-square hazards would go here */
       DH.audio.sfx('step');
-      await glideTo(u, step.x, step.y, 75);
+      await glideTo(u, step.x, step.y, STEP_MS);
       const c = cell(u.x, u.y);
       if (c.hazard === 'lava') { damage(u, DH.dice.roll('2d10').total, 'fire', {}); logLine(u.name + ' is burned by the lava.', 'hit'); }
       if (c.hazard === 'spore') {
@@ -12918,7 +12965,7 @@ DH.scenes.combat = (function () {
     if (!best || (best.x === u.x && best.y === u.y)) return;
     const path = U.tracePath(res, u.x, u.y, best.x, best.y);
     if (!path) return;
-    for (const s of path) await glideTo(u, s.x, s.y, 65);
+    for (const s of path) await glideTo(u, s.x, s.y, STEP_MS);
     u.eco.move -= best.cost;
   }
 
@@ -13006,7 +13053,7 @@ DH.scenes.combat = (function () {
     if (!best) return;
     const path = U.tracePath(res, u.x, u.y, best.x, best.y);
     if (!path) return;
-    for (const s of path) await glideTo(u, s.x, s.y, 60);
+    for (const s of path) await glideTo(u, s.x, s.y, STEP_MS);
     u.eco.move -= best.cost;
   }
 
@@ -15047,7 +15094,7 @@ DH.scenes.journal = (function () {
       const g = groups[it.kind] ? it.kind : (it.kind === 'poison' ? 'potion' : 'other');
       groups[g].push({ slot, it });
     });
-    const titles = { weapon: 'Weapons', armor: 'Armour', potion: 'Potions and Poisons', wondrous: 'Wondrous Items', quest: 'Story Items', other: 'Everything Else' };
+    const titles = { weapon: 'Weapons', armor: 'Armor', potion: 'Potions and Poisons', wondrous: 'Wondrous Items', quest: 'Story Items', other: 'Everything Else' };
     Object.keys(groups).forEach(g => {
       if (!groups[g].length) return;
       DH.ui.add(left, 'div', 'small gold', titles[g]);

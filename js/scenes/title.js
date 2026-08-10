@@ -24,7 +24,6 @@ DH.scenes.title = (function () {
     root.appendChild(ui);
 
     const logo = DH.ui.add(ui, 'div', 'logo', 'DRAKEHAVEN<em>ISLAND</em>');
-    DH.ui.add(ui, 'div', 'tag', 'A P.A.C.T. POSTING · FIVE ADVENTURERS · ONE VERY ANGRY ISLAND');
 
     const menu = DH.ui.add(ui, 'div'); menu.id = 'title-menu';
     const anySave = [1, 2, 3].some(s => DH.save.has(s));
@@ -36,7 +35,6 @@ DH.scenes.title = (function () {
     menu.appendChild(DH.ui.btn('How to Play', '', howTo));
     menu.appendChild(DH.ui.btn('House Rules', '', houseRules));
     menu.appendChild(DH.ui.btn('Settings', '', settings));
-    menu.appendChild(DH.ui.btn('Credits', '', credits));
 
     DH.ui.add(ui, 'div', 'foot', 'Click anywhere first to let the sound in. Everything you hear is generated live.');
     DH.ui.add(ui, 'div', 'vsn', 'v1.0');

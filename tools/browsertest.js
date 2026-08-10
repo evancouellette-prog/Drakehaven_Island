@@ -61,7 +61,10 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
   await page.goto('file://' + path.join(ROOT, 'index.html'));
   await page.waitForTimeout(900);
   ok(await page.locator('#title-screen .logo').isVisible(), 'the title screen renders');
-  ok((await page.locator('#title-menu button').count()) >= 6, 'the main menu has its options');
+  /* New Game, Continue, How to Play, House Rules, Settings — Credits is gone. */
+  ok((await page.locator('#title-menu button').count()) >= 5, 'the main menu has its options');
+  ok((await page.locator('#title-menu button:has-text("Credits")').count()) === 0, 'no Credits button');
+  ok((await page.locator('#title-screen .tag').count()) === 0, 'no tagline under the title');
   await shot('title');
 
   /* the informational modals */

@@ -167,7 +167,12 @@ input[type=range]{width:100%; accent-color:var(--gold)}
 /* ================= HUD (overworld) ================= */
 #hud{position:absolute; inset:0; pointer-events:none}
 #hud .tl{position:absolute; left:12px; top:12px; display:flex; flex-direction:column; gap:6px}
-#hud .tr{position:absolute; right:12px; top:12px; text-align:right; display:flex; flex-direction:column; gap:6px; align-items:flex-end}
+#hud .tr{position:absolute; right:12px; top:12px; text-align:right; display:flex; flex-direction:column;
+  gap:6px; align-items:flex-end; max-width:min(46vw,420px)}
+/* A long place name — "The Deck, The Mary Parker" — used to wrap inside this
+   plate and stack down the screen, reading as the name repeated over and over.
+   One line, clipped if it has to be. */
+#hud .tr .plate{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%}
 #hud .bl{position:absolute; left:12px; bottom:12px; display:flex; gap:6px; pointer-events:auto}
 #hud .br{position:absolute; right:12px; bottom:12px; font-size:11px; color:var(--ink-faint); text-align:right; line-height:1.7}
 .hpbar{width:190px; background:#0d1220; border:2px solid var(--edge); padding:3px; position:relative}

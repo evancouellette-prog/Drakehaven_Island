@@ -723,6 +723,16 @@ DH.gfx = (function () {
       case 'spear': P(-1 * s, -16 * s, 2 * s, 22 * s, C.wood); poly([[0, -21 * s], [2.5 * s, -15 * s], [-2.5 * s, -15 * s]], C.metal2, true); break;
       case 'hammer': P(-1 * s, -11 * s, 2 * s, 14 * s, C.wood3); P(-4 * s, -15 * s, 8 * s, 5 * s, C.stone2); break;
       case 'fists': P(-2 * s, -3 * s, 4 * s, 4 * s, o && o.brass ? '#4a7a9a' : '#d8a878'); break;
+      case 'lute':
+        /* body, soundhole, neck, and four strings down it */
+        ctx.fillStyle = '#8a613a'; ctx.beginPath(); ctx.ellipse(0, -4 * s, 4 * s, 5 * s, 0, 0, 6.3); ctx.fill();
+        P(-1.2 * s, -9 * s, 2.4 * s, 1 * s, '#6b4a2c');
+        ctx.fillStyle = '#2b1c10'; ctx.beginPath(); ctx.arc(0, -4 * s, 1.6 * s, 0, 6.3); ctx.fill();
+        P(-.8 * s, -17 * s, 1.6 * s, 9 * s, '#6b4a2c');
+        P(-1.4 * s, -18 * s, 2.8 * s, 1.4 * s, '#4a3220');
+        for (let i = 0; i < 3; i++) P(-.6 * s + i * .6 * s, -17 * s, .3 * s, 13 * s, '#e8dcc0');
+        break;
+      case 'none': break;
       case 'shield': break;
       default: break;
     }

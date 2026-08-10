@@ -60,12 +60,12 @@ DH.RACES = [
   },
   {
     id: 'mountain_dwarf', name: 'Mountain Dwarf', size: 'Medium', speed: 25,
-    blurb: 'Born inside the rock and armoured before they can walk. If a mountain dwarf tells you a tunnel is unsafe, leave.',
+    blurb: 'Born inside the rock and armored before they can walk. If a mountain dwarf tells you a tunnel is unsafe, leave.',
     bonus: { str: 2, con: 2 },
     traits: [
       { name: 'Darkvision', desc: 'See 60 ft in dim light as though it were bright.', effects: ['darkvision:60'] },
       { name: 'Dwarven Resilience', desc: 'Advantage on saves against poison, and resistance to poison damage.', effects: ['adv_vs_poison', 'resist:poison'] },
-      { name: 'Dwarven Armour Training', desc: 'Proficiency with light and medium armour.', effects: ['armor:light', 'armor:medium'] },
+      { name: 'Dwarven Armor Training', desc: 'Proficiency with light and medium armor.', effects: ['armor:light', 'armor:medium'] },
       { name: 'Stonecunning', desc: 'Double proficiency on History checks about stonework.', effects: ['stonecunning'] }
     ],
     look: { skin: ['#e8c0a0', '#d8a878', '#b8845a', '#8a5f3c'], hair: ['#5a3a22', '#7a2a20', '#c8c4b0', '#2b1f16'], flags: { beard: true, short: true } }
@@ -195,8 +195,7 @@ DH.RACES = [
     traits: [
       { name: 'Darkvision', desc: 'See 60 ft in dim light as though it were bright.', effects: ['darkvision:60'] },
       { name: 'Pack Tactics', desc: 'Advantage on attacks when an ally is within 5 ft of your target.', effects: ['pack_tactics'] },
-      { name: 'Grovel, Cower and Beg', desc: 'As an action, give allies within 10 ft advantage on their next attack.', effects: ['grovel'] },
-      { name: 'Sunlight Sensitivity', desc: 'Disadvantage on attacks and Perception in direct sunlight.', effects: ['sunlight_sensitivity'] }
+      { name: 'Grovel, Cower and Beg', desc: 'As an action, give allies within 10 ft advantage on their next attack.', effects: ['grovel'] }
     ],
     look: {
       skin: ['#a8453a', '#8a6a3a', '#3a6b5f', '#6a4a7a', '#c2954a'],

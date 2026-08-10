@@ -318,7 +318,7 @@ DH.scenes.charcreate = (function () {
     if (c.flavor) DH.ui.add(mid, 'div', 'prose faint', DH.ui.esc('“' + c.flavor + '”'));
     const tags = DH.ui.add(mid, 'div', 'tagrow');
     const bits = [];
-    if (c.armor && c.armor.length) bits.push('Armour: ' + c.armor.join(', '));
+    if (c.armor && c.armor.length) bits.push('Armor: ' + c.armor.join(', '));
     bits.push('Weapons: ' + (c.weapons || []).slice(0, 4).join(', '));
     if (c.caster) bits.push('Casts with ' + c.caster.ability.toUpperCase());
     tags.innerHTML = bits.map(b => '<span class="tag">' + DH.ui.esc(b) + '</span>').join('');
@@ -388,8 +388,7 @@ DH.scenes.charcreate = (function () {
   function stepAbilities(list, mid) {
     const methods = [
       { id: 'pointbuy', name: 'Point Buy', bit: '27 points, nothing above 15 before racials' },
-      { id: 'array', name: 'Standard Array', bit: '15, 14, 13, 12, 10, 8 — assign them' },
-      { id: 'roll', name: 'Roll 4d6, Drop Lowest', bit: 'Fate decides. It may be unkind.' }
+      { id: 'array', name: 'Standard Array', bit: '15, 14, 13, 12, 10, 8 — assign them' }
     ];
     methods.forEach(m => {
       const o = DH.ui.el('div', 'opt' + (draft.method === m.id ? ' on' : ''));

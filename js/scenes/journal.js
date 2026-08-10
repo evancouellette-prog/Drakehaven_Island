@@ -166,7 +166,7 @@ DH.scenes.journal = (function () {
       const g = groups[it.kind] ? it.kind : (it.kind === 'poison' ? 'potion' : 'other');
       groups[g].push({ slot, it });
     });
-    const titles = { weapon: 'Weapons', armor: 'Armour', potion: 'Potions and Poisons', wondrous: 'Wondrous Items', quest: 'Story Items', other: 'Everything Else' };
+    const titles = { weapon: 'Weapons', armor: 'Armor', potion: 'Potions and Poisons', wondrous: 'Wondrous Items', quest: 'Story Items', other: 'Everything Else' };
     Object.keys(groups).forEach(g => {
       if (!groups[g].length) return;
       DH.ui.add(left, 'div', 'small gold', titles[g]);
