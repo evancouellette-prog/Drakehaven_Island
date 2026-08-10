@@ -18,11 +18,27 @@ DH.scenes.combat = (function () {
   /* guards a turn from being advanced twice — by a key press racing the AI, say */
   let advancing = false;
 
+  /* How long each piece of feedback lasts, in frames at 60fps. Kept together so
+     the animation and the countdown that drives it cannot drift apart. */
+  const ATTACK_FRAMES = 12;   // lunge out and back
+  const FLASH_FRAMES = 10;    // the struck body lit up
+  const DOWN_FRAMES = 26;     // sinking as it falls
+  /* Squares a struck body is thrown, and where an attacker stops short of one. */
+  const LUNGE_PX = 7;
+  /* tiles lit for a moment to show what an area effect covered */
+  let tileFx = [];
+  /* which particle palette a spell's damage type flies as */
+  const SPELL_MOTE = {
+    fire: 'fire', cold: 'ice', lightning: 'spark', thunder: 'spark',
+    acid: 'acid', poison: 'poison', necrotic: 'necro', radiant: 'gold',
+    force: 'arcane', psychic: 'arcane'
+  };
+
   /* =============== entry =============== */
   function enter(arg) {
     encounter = arg || {};
     finished = false; busy = false; advancing = false; round = 1; turn = 0; mode = null; log = [];
-    bannerShown = false; resolved = false;
+    bannerShown = false; resolved = false; tileFx = [];
     onDone = encounter.onDone || null;
     buildArena(encounter.arena || 'town_street');
     placeUnits();
@@ -35,6 +51,9 @@ DH.scenes.combat = (function () {
   }
   function exit() {
     DH.ui.clear(); DH.audio.stormThunder(false); G.clearParticles(); G.clearFloaters();
+    /* A bolt still in flight is awaited by whatever fired it, so release those
+       before anything else — otherwise a mid-attack travel hangs the script. */
+    G.clearBolts(); tileFx = [];
     /* If we are torn down without the fight ending — a travel, a reset — release
        whatever story script is awaiting us rather than leaving it hanging. */
     if (!resolved && onDone) { resolved = true; const f = onDone; onDone = null; f({ won: false, aborted: true }); }
@@ -89,7 +108,9 @@ DH.scenes.combat = (function () {
       isPC: !!ch.isPlayer, isCharacter: true, dead: false,
       ai: ch.ai || { prefer: 'melee', focus: 'nearest' },
       eco: freshEconomy(ch), used: {},
-      facing: side === 'party' ? 'right' : 'left'
+      facing: side === 'party' ? 'right' : 'left',
+      /* animation state, counted down in update() */
+      attackAnim: 0, flash: 0, downAnim: 0, walking: false, lunge: null
     };
   }
   function unitFromMonster(id, side, tweaks) {
@@ -119,7 +140,9 @@ DH.scenes.combat = (function () {
       ch: ch, side: side, name: ch.name, x: 0, y: 0, px: 0, py: 0,
       spec: m.visual, scale: m.scale || 1, isPC: false, dead: false,
       eco: freshEconomy(ch), used: {}, recharge: {},
-      facing: side === 'party' ? 'right' : 'left', monsterId: id, ai: m.ai || { prefer: 'melee' }
+      facing: side === 'party' ? 'right' : 'left', monsterId: id, ai: m.ai || { prefer: 'melee' },
+      /* animation state, counted down in update() */
+      attackAnim: 0, flash: 0, downAnim: 0, walking: false, lunge: null
     };
   }
   function freshEconomy(ch) {
@@ -181,6 +204,26 @@ DH.scenes.combat = (function () {
     return { x: zone.x, y: zone.y };
   }
   function snap(u) { u.px = ox + u.x * CELL + CELL / 2; u.py = oy + u.y * CELL + CELL - 3; }
+  /* Walk a unit into an adjacent square instead of teleporting into it. The grid
+     position changes immediately — rules and reach must not see a unit halfway
+     between two squares — while px/py catch up over the same time the old
+     instant hop used to wait, with the walk cycle running. Used by the player's
+     movement and by every AI mover, so nobody slides around without legs. */
+  async function glideTo(u, gx, gy, ms) {
+    u.facing = gx > u.x ? 'right' : gx < u.x ? 'left' : u.facing;
+    const fromX = u.px, fromY = u.py;
+    u.x = gx; u.y = gy;
+    const toX = ox + gx * CELL + CELL / 2, toY = oy + gy * CELL + CELL - 3;
+    const frames = 5, step = Math.max(8, Math.round((ms == null ? 75 : ms) / frames));
+    u.walking = true;
+    for (let k = 1; k <= frames; k++) {
+      u.px = fromX + (toX - fromX) * k / frames;
+      u.py = fromY + (toY - fromY) * k / frames;
+      await U.wait(step);
+    }
+    u.walking = false;
+    snap(u);
+  }
 
   /* =============== initiative =============== */
   function rollInitiative() {
@@ -364,6 +407,11 @@ DH.scenes.combat = (function () {
         target.px, target.py - 14, 8, { speed: 1.4, up: 0.6 });
       DH.audio.sfx('hit');
       G.shake(target.ch.boss ? 3 : 2);
+      /* the body itself registers the hit, tinted by what hit it */
+      target.flash = FLASH_FRAMES;
+      target.flashCol = type === 'fire' ? '#ffd0a0' : type === 'cold' ? '#d8f4ff'
+        : type === 'poison' || type === 'acid' ? '#d8ffa0' : type === 'necrotic' ? '#d8b0ff'
+          : type === 'radiant' ? '#fff4c8' : '#ffe0d8';
     } else if (res.dealt === 0 && amount > 0) {
       G.floater('resisted', target.px, target.py - 30, '#9ad0f0', 9);
     }
@@ -383,6 +431,10 @@ DH.scenes.combat = (function () {
   function onUnitDown(u) {
     DH.audio.sfx('death');
     G.emit('smoke', u.px, u.py - 12, 14, { life: 40, up: 0.3 });
+    /* a fall you can see: the figure sinks and fades over half a second */
+    u.downAnim = DOWN_FRAMES;
+    G.floater(u.isCharacter ? 'DOWN' : 'SLAIN', u.px, u.py - 44,
+      u.isCharacter ? '#e9a49c' : '#d8c0ff', 10);
     if (encounter.onDown) encounter.onDown(u, api());
   }
   function healUnit(target, amount) {
@@ -435,14 +487,38 @@ DH.scenes.combat = (function () {
     const r = DH.dice.d20({ mod: atkDef.atk, adv: mods.adv, dis: mods.dis, dc: totalAC(target) });
     const isCrit = r.natural >= critAt;
     attacker.facing = target.x < attacker.x ? 'left' : 'right';
-    attacker.attackAnim = 12;
+    attacker.attackAnim = ATTACK_FRAMES;
+    /* melee leans into the target; a bowman plants and does not */
+    const dx = target.px - attacker.px, dy = target.py - attacker.py;
+    const d = Math.hypot(dx, dy) || 1;
+    attacker.lunge = atkDef.ranged ? { x: 0, y: 0 }
+      : { x: dx / d * LUNGE_PX, y: dy / d * LUNGE_PX };
+    DH.audio.sfx(atkDef.ranged ? 'bow' : 'swing');
 
     const hit = isCrit || (r.natural !== 1 && r.total >= totalAC(target));
+
+    /* Watch the shot cross the ground before anything resolves at the far end. */
+    if (atkDef.ranged) {
+      await G.bolt(attacker.px, attacker.py - 14, target.px, target.py - 14, {
+        kind: atkDef.type === 'fire' ? 'fire' : atkDef.type === 'cold' ? 'ice' : 'dust',
+        size: 2, arc: 9, dur: Math.max(8, Math.min(22, Math.round(d / 9)))
+      });
+    } else {
+      await U.wait(90);            // let the swing land before the number appears
+    }
+
     if (!hit) {
       logLine(attacker.name + ' misses ' + target.name + ' (' + DH.dice.fmt(r) + ' vs AC ' + totalAC(target) + ')');
       G.floater('miss', target.px, target.py - 30, '#8b7a5f', 9);
+      /* a near miss throws sparks off whatever it hit instead */
+      G.emit('dust', target.px + (dx > 0 ? -6 : 6), target.py - 10, 5, { life: 18, speed: 1.1 });
       DH.audio.sfx('miss');
       return { hit: false, roll: r };
+    }
+    if (isCrit) {
+      G.floater('CRIT', target.px, target.py - 48, '#e8bd58', 12);
+      G.shake(5);
+      G.emit('spark', target.px, target.py - 16, 22, { life: 34, speed: 2 });
     }
     /* damage */
     let total = 0;
@@ -578,7 +654,8 @@ DH.scenes.combat = (function () {
       if (!walkable(nx, ny) || unitAt(nx, ny)) break;
       target.x = nx; target.y = ny;
     }
-    snap(target);
+    /* No snap: update() eases px/py to the new square, so a shove is a body
+       being moved rather than a body appearing somewhere else. */
   }
 
   /* =============== area effects =============== */
@@ -610,12 +687,18 @@ DH.scenes.combat = (function () {
     const tiles = tilesForShape(def.shape, { x: src.x, y: src.y }, targetPt);
     const dc = def.save ? (def.save.dc || (src.ch.spellDC || 13)) : 13;
     const hitUnits = units.filter(u => !u.dead && tiles.some(t => t.x === u.x && t.y === u.y));
-    /* visuals */
+    /* Visuals. The tiles themselves light up for a moment: a cone or a burst is
+       a shape on the ground, and without painting that shape you cannot see who
+       was caught in it or why. */
+    const mote = SPELL_MOTE[def.type] || 'arcane';
+    const zoneCol = def.type === 'fire' ? '#f0a03c' : def.type === 'cold' ? '#a8d8e8'
+      : def.type === 'acid' || def.type === 'poison' ? '#8ac42a'
+        : def.type === 'lightning' || def.type === 'thunder' ? '#e8bd58'
+          : def.type === 'necrotic' ? '#7a4a8a' : '#9a6fd0';
     tiles.forEach(t => {
       if (!inBounds(t.x, t.y)) return;
-      G.emit(def.type === 'fire' ? 'fire' : def.type === 'cold' ? 'ice' : def.type === 'acid' || def.type === 'poison' ? 'acid'
-        : def.type === 'lightning' ? 'spark' : def.type === 'necrotic' ? 'necro' : 'arcane',
-        ox + t.x * CELL + CELL / 2, oy + t.y * CELL + CELL / 2, 5, { life: 26, speed: 1.1 });
+      tileFx.push({ x: t.x, y: t.y, col: zoneCol, life: 26, max: 26 });
+      G.emit(mote, ox + t.x * CELL + CELL / 2, oy + t.y * CELL + CELL / 2, 5, { life: 26, speed: 1.1 });
     });
     DH.audio.sfx(def.type === 'fire' ? 'fire' : def.type === 'cold' ? 'ice' : 'spell');
     G.shake(3);
@@ -1164,11 +1247,8 @@ DH.scenes.combat = (function () {
     busy = true;
     for (const step of path) {
       /* spike growth and other per-square hazards would go here */
-      u.facing = step.x > u.x ? 'right' : step.x < u.x ? 'left' : u.facing;
-      u.x = step.x; u.y = step.y;
-      snap(u);
       DH.audio.sfx('step');
-      await U.wait(75);
+      await glideTo(u, step.x, step.y, 75);
       const c = cell(u.x, u.y);
       if (c.hazard === 'lava') { damage(u, DH.dice.roll('2d10').total, 'fire', {}); logLine(u.name + ' is burned by the lava.', 'hit'); }
       if (c.hazard === 'spore') {
@@ -1276,7 +1356,20 @@ DH.scenes.combat = (function () {
 
     logLine(u.name + ' casts ' + sp.name + '.', 'turn');
     DH.audio.sfx(sp.type === 'fire' ? 'fire' : sp.type === 'cold' ? 'ice' : 'spell');
-    G.emit('arcane', u.px, u.py - 16, 10, { life: 26 });
+    /* the cast gathers at the caster's hands first */
+    u.facing = target && target.x < u.x ? 'left' : 'right';
+    u.attackAnim = ATTACK_FRAMES;
+    u.lunge = { x: 0, y: -2 };
+    G.emit('arcane', u.px, u.py - 16, 14, { life: 26, up: .4 });
+    await U.wait(140);
+    /* then it travels — a spell that lands instantly on a distant target looks
+       like nothing happened between the two of them */
+    if (target && target !== u && (target.px !== u.px || target.py !== u.py)) {
+      await G.bolt(u.px, u.py - 16, target.px, target.py - 14, {
+        kind: SPELL_MOTE[sp.type] || 'arcane', size: 3, arc: 6,
+        dur: Math.max(9, Math.min(24, Math.round(U.dist(u.px, u.py, target.px, target.py) / 8)))
+      });
+    }
 
     if (sp.conc) { ch.concentration = sp.id; C.addCondition(ch, 'concentrating', -1); }
 
@@ -1393,7 +1486,8 @@ DH.scenes.combat = (function () {
       if (!walkable(nx, ny) || unitAt(nx, ny)) break;
       target.x = nx; target.y = ny;
     }
-    snap(target);
+    /* No snap: update() eases px/py to the new square, so a shove is a body
+       being moved rather than a body appearing somewhere else. */
   }
   function applyZone(sp, pt) {
     if (!sp.terrain && !sp.zone) return;
@@ -1515,11 +1609,7 @@ DH.scenes.combat = (function () {
     if (!best || (best.x === u.x && best.y === u.y)) return;
     const path = U.tracePath(res, u.x, u.y, best.x, best.y);
     if (!path) return;
-    for (const s of path) {
-      u.facing = s.x > u.x ? 'right' : s.x < u.x ? 'left' : u.facing;
-      u.x = s.x; u.y = s.y; snap(u);
-      await U.wait(65);
-    }
+    for (const s of path) await glideTo(u, s.x, s.y, 65);
     u.eco.move -= best.cost;
   }
 
@@ -1607,7 +1697,7 @@ DH.scenes.combat = (function () {
     if (!best) return;
     const path = U.tracePath(res, u.x, u.y, best.x, best.y);
     if (!path) return;
-    for (const s of path) { u.x = s.x; u.y = s.y; snap(u); await U.wait(60); }
+    for (const s of path) await glideTo(u, s.x, s.y, 60);
     u.eco.move -= best.cost;
   }
 
@@ -1823,7 +1913,21 @@ DH.scenes.combat = (function () {
       if (DH.input.tapped('pod')) { const u = active(); if (u && u.isPC) { usePod(u); refreshUI(); } }
       if (DH.input.tapped('cancel')) { mode = null; refreshUI(); }
     }
-    units.forEach(u => { if (u.attackAnim > 0) u.attackAnim--; });
+    units.forEach(u => {
+      if (u.attackAnim > 0) u.attackAnim--;
+      if (u.flash > 0) u.flash--;
+      if (u.downAnim > 0) u.downAnim--;
+      /* Catch a body up to its square whenever something moved it without
+         walking — a shove, a push, a pull. glideTo drives px/py itself, so it
+         is left alone while it is walking. */
+      if (!u.walking && !u.dead) {
+        const tx = ox + u.x * CELL + CELL / 2, ty = oy + u.y * CELL + CELL - 3;
+        if (Math.abs(tx - u.px) > 0.4 || Math.abs(ty - u.py) > 0.4) {
+          u.px += (tx - u.px) * 0.25;
+          u.py += (ty - u.py) * 0.25;
+        } else { u.px = tx; u.py = ty; }
+      }
+    });
   }
 
   function draw() {
@@ -1850,6 +1954,18 @@ DH.scenes.combat = (function () {
         if (c.cold) G.alpha(0.22, () => G.rect(px, py, CELL, CELL, '#a8d8e8', true));
       }
     }
+    /* Ground still burning, freezing or crackling from an area effect. Drawn on
+       the floor and under the figures, because that is where the effect is. */
+    for (let i = tileFx.length - 1; i >= 0; i--) {
+      const t = tileFx[i];
+      t.life--;
+      if (t.life <= 0) { tileFx.splice(i, 1); continue; }
+      const k = t.life / t.max;
+      const px = ox + t.x * CELL, py = oy + t.y * CELL;
+      G.alpha(k * 0.55, () => G.rect(px, py, CELL, CELL, t.col, true));
+      G.alpha(k * 0.9, () => G.stroke(px, py, CELL, CELL, t.col, 1, true));
+    }
+
     /* reachable squares for the active unit */
     const u = active();
     if (u && u.isPC && reach && !busy) {
@@ -1901,12 +2017,31 @@ DH.scenes.combat = (function () {
         });
       }
       const opts = {
-        scale: v.scale, facing: v.facing, moving: false,
+        scale: v.scale, facing: v.facing, moving: !!v.walking,
         weapon: v.weapon || null, attacking: v.attackAnim > 0,
         phase: v.x * 0.7 + v.y * 0.3, glowEyes: v.spec && v.spec.eyeGlow
       };
+      /* A strike carries the body with it: the attacker leans into the blow and
+         settles back, which is what makes a hit look like it landed on someone. */
+      let lx = 0, ly = 0;
+      if (v.attackAnim > 0 && v.lunge) {
+        const k = Math.sin((1 - v.attackAnim / ATTACK_FRAMES) * Math.PI);
+        lx = v.lunge.x * k; ly = v.lunge.y * k;
+      }
       /* creature painters work in world space; the combat camera sits at 0,0 */
-      G.creature(v.spec, v.px, v.py, opts);
+      const drawX = v.px + lx, drawY = v.py + ly;
+      if (v.downAnim > 0) {
+        /* going down: sink and fade rather than blinking out of existence */
+        const k = v.downAnim / DOWN_FRAMES;
+        G.alpha(0.25 + k * 0.75, () => G.creature(v.spec, drawX, drawY + (1 - k) * 5, opts));
+      } else {
+        G.creature(v.spec, drawX, drawY, opts);
+      }
+      /* and the one taking it flashes, so damage lands on the body */
+      if (v.flash > 0) {
+        G.alpha(v.flash / FLASH_FRAMES * 0.8, () =>
+          G.creature(G.silhouette(v.spec, v.flashCol || '#ffe8e0'), drawX, drawY, opts));
+      }
       if (C.hasCondition(v.ch, 'shielded')) {
         G.alpha(0.3 + Math.sin(G.tick * 0.2) * 0.15, () => G.ellipseS(v.px, v.py - 16, 15, 19, '#6fd0ff', 2, true));
       }
@@ -1932,6 +2067,7 @@ DH.scenes.combat = (function () {
     });
 
     G.updateParticles();
+    G.updateBolts();
     G.updateFloaters();
 
     if (arena.rain) G.rain(arena.rain, 5);
@@ -1981,11 +2117,17 @@ DH.scenes.combat = (function () {
       origin: { x: ox, y: oy, cell: CELL },
       activeName: u ? u.name : null,
       activeIsPC: !!(u && u.isPC),
+      /* how many bolts are crossing the field right now */
+      bolts: G.boltCount(),
+      tileFx: tileFx.length,
       units: units.map(v => ({
         name: v.name, side: v.side, dead: v.dead, isPC: v.isPC,
         x: v.x, y: v.y, px: v.px, py: v.py,
         hp: v.ch.hp, hpMax: v.ch.hpMax, ac: totalAC(v),
-        conditions: (v.ch.conditions || []).map(c => c.id)
+        conditions: (v.ch.conditions || []).map(c => c.id),
+        /* animation state, so a test can watch a blow land */
+        attackAnim: v.attackAnim || 0, flash: v.flash || 0,
+        downAnim: v.downAnim || 0, walking: !!v.walking
       }))
     };
   }

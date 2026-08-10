@@ -54,7 +54,7 @@ const ok = (c, m) => { if (!c) { failures++; console.log('  FAIL  ' + m); } else
   ok(boot.races >= 9, boot.races + ' races loaded');
   ok(boot.maps >= 30, boot.maps + ' maps loaded');
   ok(boot.monsters >= 30, boot.monsters + ' monsters loaded');
-  ok(boot.companions === 5, boot.companions + ' companions loaded');
+  ok(boot.companions === 3, boot.companions + ' companions loaded');
   ok(boot.beats >= 20, boot.beats + ' story beats loaded');
 
   /* the title screen must actually start a game: New Game -> pick a slot */
@@ -77,7 +77,7 @@ const ok = (c, m) => { if (!c) { failures++; console.log('  FAIL  ' + m); } else
     return [pc].concat(DH.COMPANIONS.map(DH.char.fromCompanion))
       .map(c => ({ name: c.name, cls: c.className, lv: c.level, hp: c.hp, ac: c.ac }));
   });
-  ok(party.length === 6, 'a full party of six (' + party.length + ')');
+  ok(party.length === 4, 'a full party of four (' + party.length + ')');
   ok(party.every(c => c.lv === 3), 'everyone starts at level 3');
   ok(party.every(c => c.hp > 0 && c.ac > 0), 'everyone has hit points and an AC');
 

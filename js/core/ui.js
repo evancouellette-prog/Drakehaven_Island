@@ -158,9 +158,13 @@ DH.ui = (function () {
     if (!dlgEl) {
       dlgEl = el('div'); dlgEl.id = 'dlg';
       const box = add(dlgEl, 'div', 'box');
-      add(box, 'div', 'who');
-      add(box, 'div', 'txt');
-      add(box, 'div', 'next', '▼ space');
+      /* portrait sits beside the words, so the speaker is a face and not just
+         a line of text above the line of text */
+      add(box, 'div', 'portrait');
+      const col = add(box, 'div', 'said');
+      add(col, 'div', 'who');
+      add(col, 'div', 'txt');
+      add(col, 'div', 'next', '▼ space');
       add(dlgEl, 'div', 'choices');
       root().appendChild(dlgEl);
       dlgEl.addEventListener('mousedown', (e) => {
@@ -170,6 +174,65 @@ DH.ui = (function () {
     }
     dlgEl.classList.remove('hidden');
     return dlgEl;
+  }
+
+  /* ---------- who is speaking ----------
+     Story lines name their speaker with a plain string, so the face is looked up
+     from that name across everything the game knows about: the live party first
+     (a player character's chosen appearance beats any template), then the
+     companion roster, then monsters, then the NPCs placed on maps.
+
+     Narrator voices — "The Table", "Saving Throws" — match nothing and get no
+     portrait, which is correct: they are not people. */
+  let speakerIndex = null;
+  function buildSpeakerIndex() {
+    const ix = new Map();
+    const put = (name, spec) => {
+      if (!name || !spec) return;
+      const k = String(name).toLowerCase().trim();
+      if (!ix.has(k)) ix.set(k, spec);
+    };
+    (DH.COMPANIONS || []).forEach(c => put(c.name, c.visual));
+    Object.keys(DH.MONSTERS || {}).forEach(id => {
+      const m = DH.MONSTERS[id];
+      put(m.name, m.visual);
+    });
+    /* NPCs carry their look by reference to a monster or companion id */
+    Object.keys(DH.MAPS || {}).forEach(mid => {
+      (DH.MAPS[mid].npcs || []).forEach(n => {
+        const src = n.visual ||
+          (n.visualFrom && ((DH.MONSTERS || {})[n.visualFrom] || DH.companion(n.visualFrom) || {}).visual);
+        put(n.name, src);
+      });
+    });
+    return ix;
+  }
+  function speakerSpec(name) {
+    if (!name) return null;
+    const key = String(name).toLowerCase().trim();
+    const party = (DH.game && DH.game.state && DH.game.state.party) || [];
+    for (const c of party) {
+      if (c.name && c.name.toLowerCase().trim() === key) {
+        return DH.char.visualFor ? DH.char.visualFor(c) : c.appearance;
+      }
+    }
+    /* the roster only changes when data does, so build the rest once */
+    if (!speakerIndex) speakerIndex = buildSpeakerIndex();
+    return speakerIndex.get(key) || null;
+  }
+  /* Paint the portrait slot for a speaker, or collapse it when there is no face. */
+  function setPortrait(d, who, narr) {
+    const slot = d.querySelector('.portrait');
+    if (!slot) return;
+    const spec = narr ? null : speakerSpec(who);
+    if (!spec) { slot.style.display = 'none'; slot.innerHTML = ''; return; }
+    if (slot.dataset.who === String(who)) { slot.style.display = ''; return; }
+    slot.innerHTML = '';
+    /* 80 is the .portrait content box exactly (84 less its 2px border each side),
+       so the bust maps one canvas pixel to one screen pixel and stays crisp */
+    slot.appendChild(DH.gfx.portrait(spec, 80));
+    slot.dataset.who = String(who);
+    slot.style.display = '';
   }
   function hideDlg() { if (dlgEl) dlgEl.classList.add('hidden'); }
   function dlgVisible() { return dlgEl && !dlgEl.classList.contains('hidden'); }
@@ -184,6 +247,7 @@ DH.ui = (function () {
     who.textContent = o.who || '';
     who.className = 'who' + (o.who ? '' : ' narr') + (o.narr ? ' narr' : '');
     who.style.display = o.who ? '' : 'none';
+    setPortrait(d, o.who, o.narr);
     next.style.visibility = 'hidden';
 
     const full = rich(o.text || '');
@@ -247,6 +311,7 @@ DH.ui = (function () {
       const txt = d.querySelector('.txt'), who = d.querySelector('.who');
       who.textContent = o.who || ''; who.style.display = o.who ? '' : 'none';
       who.className = 'who' + (o.who ? '' : ' narr');
+      setPortrait(d, o.who, o.narr);
       txt.innerHTML = rich(o.text);
       lastFull = txt.innerHTML;
     }
@@ -271,12 +336,34 @@ DH.ui = (function () {
 
   /* ================= DICE POPUP ================= */
   /* roller({label, dc, mod, adv, dis, bonusDice, kind:'check'|'save'|'attack'}) → result */
+  /* An icosahedron seen face-on: a hexagonal silhouette whose interior is all
+     triangles, with the number sitting on the front face. The shape this
+     replaced drew a cube — three quadrilateral faces — which read as a d6 no
+     matter what number was printed on it.
+
+     Six outer points H0..H5, and the front face A-B-C in the middle. Every
+     other vertex is joined to the two nearest front-face corners, which is what
+     makes the facets triangular and the die a d20. */
+  const H = [[50, 3], [91, 26.5], [91, 73.5], [50, 97], [9, 73.5], [9, 26.5]];
+  const FA = [50, 29], FB = [74, 70], FC = [26, 70];
   function d20svg(natural) {
-    const col = natural === 20 ? '#e8bd58' : natural === 1 ? '#c2453a' : '#7d8798';
-    return '<svg viewBox="0 0 100 100"><polygon points="50,4 94,28 94,72 50,96 6,72 6,28" ' +
-      'fill="#1b2233" stroke="' + col + '" stroke-width="4"/>' +
-      '<polygon points="50,4 94,28 50,52 6,28" fill="#232c40" stroke="' + col + '" stroke-width="2"/>' +
-      '<polygon points="50,52 94,28 94,72 50,96" fill="#161d2c" stroke="' + col + '" stroke-width="2"/>' +
+    const col = natural === 20 ? '#e8bd58' : natural === 1 ? '#c2453a' : '#8d97a8';
+    const p = (a) => a.join(',');
+    const tri = (a, b, c, fill) =>
+      '<polygon points="' + p(a) + ' ' + p(b) + ' ' + p(c) + '" fill="' + fill +
+      '" stroke="' + col + '" stroke-width="1.4" stroke-linejoin="round"/>';
+    /* Facets shaded as if lit from above: the upper ring catches light, the
+       lower ring falls away, so the solid reads as a solid and not a flat badge. */
+    return '<svg viewBox="0 0 100 100">' +
+      '<polygon points="' + H.map(p).join(' ') + '" fill="#141a28"/>' +
+      tri(H[0], H[5], FA, '#2b3550') + tri(H[0], FA, H[1], '#2b3550') +
+      tri(H[5], FC, FA, '#222b42') + tri(H[1], FA, FB, '#222b42') +
+      tri(H[5], H[4], FC, '#1a2133') + tri(H[1], FB, H[2], '#1a2133') +
+      tri(H[4], H[3], FC, '#181f2f') + tri(H[2], H[3], FB, '#181f2f') +
+      tri(H[3], FB, FC, '#1b2233') +
+      tri(FA, FB, FC, '#38456a') +
+      '<polygon points="' + H.map(p).join(' ') + '" fill="none" stroke="' + col +
+      '" stroke-width="3.5" stroke-linejoin="round"/>' +
       '</svg>';
   }
   async function roller(o) {
@@ -354,6 +441,6 @@ DH.ui = (function () {
     fadeOut, fadeIn, chapter,
     tip, hideTip,
     say: (o) => say(o), choose, hideDlg, dlgVisible, advance,
-    roller, quickRoll, d20svg
+    speakerSpec, roller, quickRoll, d20svg
   };
 })();

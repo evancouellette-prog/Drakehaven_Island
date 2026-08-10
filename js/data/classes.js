@@ -39,7 +39,7 @@ DH.CLASSES = [
   {
     id: 'barbarian', name: 'Barbarian', hitDie: 12, primary: ['str', 'con'],
     blurb: 'You do not out-think the problem. You walk into it until it stops. Rage is not a mood, it is a resource.',
-    flavor: 'Mahoraga has been punching a bar of ship-iron for two hours because the storm woke him and he had nothing else to hit.',
+    flavor: 'Anvil has been punching a bar of ship-iron for two hours because the storm woke him and he had nothing else to hit.',
     saves: ['str', 'con'], armor: ['light', 'medium', 'shields'], weapons: ['simple', 'martial'],
     skillCount: 2, skillList: ['animal_handling', 'athletics', 'intimidation', 'nature', 'perception', 'survival'],
     kit: ['greataxe', 'handaxe', 'handaxe', 'explorers_pack', 'javelin'],
@@ -299,7 +299,7 @@ DH.CLASSES = [
   {
     id: 'monk', name: 'Monk', hitDie: 8, primary: ['dex', 'wis'],
     blurb: 'Your body is the weapon and ki is the fuel. You are the fastest thing on the grid and you never stop punching.',
-    flavor: 'Mahoraga punches hard metal to train his fists. This is a monk\'s idea of a quiet evening.',
+    flavor: 'Anvil punches hard metal to train his fists. This is a monk\'s idea of a quiet evening.',
     saves: ['str', 'dex'], armor: [], weapons: ['simple', 'shortsword'],
     skillCount: 2, skillList: ['acrobatics', 'athletics', 'history', 'insight', 'religion', 'stealth'],
     kit: ['shortsword', 'dungeoneers_pack', 'dart'],

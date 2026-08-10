@@ -170,7 +170,7 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
   ok(s.party.length === 1, 'the party starts as one');
   console.log('        state: ' + JSON.stringify(s.party[0]));
 
-  /* Answer "yes, talk to Mahoraga", then keep advancing through the act */
+  /* Answer "yes, talk to Anvil", then keep advancing through the act */
   await page.locator('#dlg .ch').first().click();
   await page.waitForTimeout(400);
   for (let i = 0; i < 60; i++) {
@@ -325,6 +325,34 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
     return true;
   }
 
+  /* Press End Turn once the scene will accept it, then wait for initiative to
+     actually move on. Returns false if the turn would not budge. */
+  async function endTurnWhenIdle() {
+    for (let i = 0; i < 40; i++) {
+      const st = await page.evaluate(() => {
+        const c = DH.game.current();
+        if (!c || c.name !== 'combat') return null;
+        const b = DH.scenes.combat.inspect();
+        return { busy: b.busy, who: b.activeName, isPC: b.activeIsPC, finished: b.finished };
+      });
+      if (!st || st.finished) return false;
+      if (!st.isPC) return true;                 // somebody else already has it
+      if (!st.busy) {
+        await page.keyboard.press('KeyT');
+        await page.waitForTimeout(180);
+        const moved = await page.evaluate((was) => {
+          const c = DH.game.current();
+          if (!c || c.name !== 'combat') return true;
+          const b = DH.scenes.combat.inspect();
+          return b.finished || b.activeName !== was;
+        }, st.who);
+        if (moved) return true;
+      }
+      await page.waitForTimeout(150);
+    }
+    return false;
+  }
+
   /* Wait on the outcome, not on a turn count: rounds take as long as ten units
      need. Bail out after a generous deadline so a hang still reports. */
   let attacked = 0, shotMid = false;
@@ -338,8 +366,12 @@ function ok(cond, msg) { if (!cond) { failures++; console.log('  FAIL  ' + msg);
     const did = await takeTurn();
     if (did) attacked++;
     if (attacked >= 1 && !shotMid) { await shot('combat-mid'); shotMid = true; }
-    if (did) await page.keyboard.press('KeyT');
-    await page.waitForTimeout(did ? 260 : 500);
+    /* End the turn only once combat is idle. An attack now animates — the swing
+       lands, a shot crosses the ground — and while that resolves the scene is
+       busy and drops the End Turn key, which used to stall the whole fight on a
+       fixed timer. Press it when it can be heard, and confirm the turn moved. */
+    if (did) await endTurnWhenIdle();
+    await page.waitForTimeout(did ? 200 : 500);
     /* the dice popup, if a save or a check interrupts */
     const cont = page.locator('#roller button').first();
     if (await cont.isVisible().catch(() => false)) { await cont.click(); await page.waitForTimeout(200); }

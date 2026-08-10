@@ -429,10 +429,10 @@ DH.monster = (id) => DH.MONSTERS[id];
    Companions are built like characters but authored directly. */
 DH.COMPANIONS = [
   {
-    id: 'mahoraga', name: 'Mahoraga', raceName: 'Half-Orc', className: 'Monk', subclassName: 'Way of the Open Hand',
+    id: 'anvil', name: 'Anvil', raceName: 'Half-Orc', className: 'Monk', subclassName: 'Way of the Open Hand',
     level: 3, hitDie: 8, abilities: AB(16, 17, 15, 8, 15, 10),
     hp: 27, ac: 16, speed: 40, weapon: 'unarmed', art: 'fists',
-    blurb: 'Punching a bar of hard ship-iron in the crew quarters because the storm woke him. He trains his fists on whatever will not give.',
+    blurb: 'Punching a bar of hard ship-iron in the crew quarters because the storm woke him. He trains his fists on whatever will not give, which is how he got the name.',
     intro: 'A half-orc the size of a doorway is holding a bent bar of ship-iron and hitting it, over and over, with the flat of his fist. He does not look up.',
     skills: ['athletics', 'acrobatics', 'insight'],
     features: ['martial_arts', 'ki', 'unarmored_defense:wis', 'open_hand', 'deflect_missiles'],
@@ -446,7 +446,7 @@ DH.COMPANIONS = [
     scale: 1.15, ai: { prefer: 'melee', focus: 'strongest' }
   },
   {
-    id: 'dex', name: 'Dex', raceName: 'Wood Elf', className: 'Ranger', subclassName: 'Gloom Stalker',
+    id: 'umarion', name: 'Umarion', raceName: 'Wood Elf', className: 'Ranger', subclassName: 'Gloom Stalker',
     level: 3, hitDie: 10, abilities: AB(12, 18, 14, 12, 15, 11),
     hp: 25, ac: 15, speed: 35, weapon: 'longbow', art: 'bow',
     blurb: 'Swinging back and forth in a hammock, reading, entirely unbothered by the weather or by the sound of a man hitting metal.',
@@ -458,44 +458,9 @@ DH.COMPANIONS = [
       { name: 'Shortsword', kind: 'attack', atk: 6, reach: 5, dmg: '1d6+4', type: 'piercing' },
       { name: 'Hunter\'s Mark', kind: 'buff', mark: { dmg: '1d6' }, dur: 10, uses: 3, weight: 2 }
     ],
-    visual: { body: 'humanoid', skin: '#e8d0b0', hair: '#6a5a2a', cloth: '#3a5a3a', cloth2: '#2b4229', hairStyle: 'long', ears: 'long', cloak: '#4a6b42' },
+    /* Wood elves who have lived under canopy long enough take its colour. */
+    visual: { body: 'humanoid', skin: '#8aa87a', hair: '#4a6b3a', cloth: '#3a5a3a', cloth2: '#2b4229', hairStyle: 'long', ears: 'long', cloak: '#4a6b42' },
     ai: { prefer: 'ranged', focus: 'weakest', keepDistance: 6 }
-  },
-  {
-    id: 'wyatt', name: 'Wyatt', raceName: 'Gold Dragonborn', className: 'Sorcerer', subclassName: 'Draconic Bloodline',
-    level: 3, hitDie: 6, abilities: AB(12, 13, 15, 12, 11, 18),
-    hp: 23, ac: 14, speed: 30, weapon: 'staff', art: 'staff',
-    blurb: 'The one the Command Pod sent. When his knees hit the dock and his eyes started to glow gold, something very old spoke through him.',
-    intro: 'A gold dragonborn, broad in the shoulder, asleep until the fat man hit the deck. He wakes badly, the way people do when they dream about something calling them.',
-    skills: ['arcana', 'persuasion', 'insight'],
-    features: ['spellcasting', 'draconic_ac', 'hp_per_level:1', 'breath', 'dragon_touched'],
-    spells: ['fire_bolt', 'shocking_grasp', 'minor_illusion', 'magic_missile', 'shield', 'burning_hands', 'scorching_ray'],
-    slots: { 1: 4, 2: 2 },
-    actions: [
-      { name: 'Fire Bolt', kind: 'attack', atk: 6, range: 120, dmg: '2d10', type: 'fire' },
-      { name: 'Scorching Ray', kind: 'spell', spell: 'scorching_ray', slot: 2, weight: 4 },
-      { name: 'Magic Missile', kind: 'spell', spell: 'magic_missile', slot: 1, weight: 3 },
-      { name: 'Breath Weapon', kind: 'save', shape: { k: 'cone', size: 15 }, save: { ab: 'dex', dc: 13 }, dmg: '2d6', type: 'fire', half: true, uses: 1, weight: 2 }
-    ],
-    visual: { body: 'humanoid', skin: '#c2954a', scales: '#e8bd58', snout: true, tail: true, horns: 'curved', hairStyle: 'bald', cloth: '#8a6a2a', cloth2: '#5a4418', eyeGlow: false },
-    scale: 1.08, ai: { prefer: 'ranged', focus: 'strongest', keepDistance: 5 }
-  },
-  {
-    id: 'lucas', name: 'Lucas', raceName: 'Human', className: 'Fighter', subclassName: 'Battle Master',
-    level: 3, hitDie: 10, abilities: AB(18, 13, 16, 11, 12, 12),
-    hp: 31, ac: 18, speed: 30, weapon: 'longsword', art: 'sword', shield: true,
-    blurb: 'The strongest pair of hands in the party, and the reason the rolling boulder in the mine can be stopped at all.',
-    intro: 'Asleep in the third hammock with one boot still on, a human in a mail shirt he clearly did not take off to sleep.',
-    skills: ['athletics', 'intimidation', 'perception'],
-    features: ['second_wind', 'action_surge', 'superiority:4', 'defense'],
-    actions: [
-      { name: 'Longsword', kind: 'attack', atk: 7, reach: 5, dmg: '1d8+4', type: 'slashing' },
-      { name: 'Trip Attack', kind: 'attack', atk: 7, reach: 5, dmg: '1d8+4', type: 'slashing', rider: { save: { ab: 'str', dc: 15 }, cond: 'prone' }, extra: { dmg: '1d8' }, cost: { superiority: 1 }, weight: 3 },
-      { name: 'Second Wind', kind: 'heal', heal: '1d10+3', uses: 1, weight: 2, self: true }
-    ],
-    superiority: 4,
-    visual: { body: 'humanoid', skin: '#e8c0a0', hair: '#8a6a3a', cloth: '#5a5a6a', cloth2: '#3a3a4a', armor: '#8a92a2', hairStyle: 'short' },
-    ai: { prefer: 'melee', focus: 'strongest' }
   },
   {
     id: 'ball_wizard', name: 'Ball Wizard', raceName: 'Rock Gnome', className: 'Wizard', subclassName: 'School of Evocation',

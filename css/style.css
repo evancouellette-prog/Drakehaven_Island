@@ -190,7 +190,10 @@ input[type=range]{width:100%; accent-color:var(--gold)}
 #dlg{position:absolute; left:0; right:0; bottom:0; padding:0 4vw 22px; display:flex;
   flex-direction:column; align-items:center; gap:10px; z-index:40}
 #dlg .box{width:min(940px,100%); background:#0b0f1af2; border:2px solid var(--edge);
-  border-top-color:var(--gold-dim); padding:16px 20px; box-shadow:0 -6px 40px #000b}
+  border-top-color:var(--gold-dim); padding:16px 20px; box-shadow:0 -6px 40px #000b;
+  display:flex; align-items:flex-start; gap:16px}
+/* the words take the rest of the row, whether or not there is a face beside them */
+#dlg .said{flex:1; min-width:0}
 #dlg .who{font-size:12px; color:var(--gold); letter-spacing:.16em; margin-bottom:7px}
 #dlg .who.narr{color:var(--sea)}
 #dlg .txt{font-size:15px; line-height:1.72; color:var(--ink); min-height:52px; white-space:pre-wrap}
@@ -203,9 +206,15 @@ input[type=range]{width:100%; accent-color:var(--gold)}
 #dlg .ch .req{font-size:10.5px; color:var(--ink-faint); margin-left:8px}
 #dlg .ch.locked{opacity:.45; cursor:not-allowed}
 #dlg .ch.locked:hover{transform:none; background:#131a29e8; border-left-color:var(--gold-dim)}
-#dlg .portrait{position:absolute; left:4vw; bottom:calc(100% + 8px); width:96px; height:96px;
-  border:2px solid var(--edge); background:#0c1120}
-#dlg .portrait canvas{width:100%;height:100%;image-rendering:pixelated}
+/* The speaker's face, beside their name. Fixed size so lines of different
+   lengths do not make the box jump, and pixelated so the bust keeps the same
+   crisp edges as the sprite it was drawn from. */
+#dlg .portrait{flex:0 0 84px; width:84px; height:84px; border:2px solid var(--edge);
+  border-left-color:var(--gold-dim); background:#0c1120; overflow:hidden;
+  box-shadow:inset 0 0 22px #0009}
+#dlg .portrait canvas{width:100%; height:100%; image-rendering:pixelated;
+  image-rendering:crisp-edges; display:block}
+@media (max-width:640px){ #dlg .portrait{flex-basis:60px; width:60px; height:60px} }
 
 /* ================= DICE POPUP ================= */
 #roller{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
@@ -213,10 +222,13 @@ input[type=range]{width:100%; accent-color:var(--gold)}
 #roller .card{width:min(430px,92vw); padding:22px; text-align:center}
 #roller .what{font-size:12px; letter-spacing:.18em; color:var(--gold); margin-bottom:4px}
 #roller .dc{font-size:11.5px; color:var(--ink-faint); margin-bottom:16px}
-#roller .die{width:104px; height:104px; margin:0 auto 12px; position:relative;
+#roller .die{width:112px; height:112px; margin:0 auto 12px; position:relative;
   display:flex; align-items:center; justify-content:center}
 #roller .die svg{position:absolute; inset:0; width:100%; height:100%}
-#roller .die .n{font-size:40px; font-weight:bold; position:relative; text-shadow:0 2px 8px #000}
+/* The number belongs on the d20's front face, whose centre sits below the
+   middle of the solid — hence the nudge down rather than plain centring. */
+#roller .die .n{font-size:31px; font-weight:bold; position:relative;
+  transform:translateY(9px); text-shadow:0 2px 8px #000, 0 0 3px #000}
 #roller.spin .die{animation:tumble .5s ease-out}
 @keyframes tumble{0%{transform:rotate(0) scale(.6)}60%{transform:rotate(380deg) scale(1.14)}100%{transform:rotate(360deg) scale(1)}}
 #roller .math{font-size:13px; color:var(--ink-dim); margin-bottom:8px}

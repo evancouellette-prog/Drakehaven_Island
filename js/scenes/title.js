@@ -218,7 +218,7 @@ DH.scenes.title = (function () {
         the Mary Parker in a storm, the sea hags, P.A.C.T. and its pods, the crazy ones, the
         Half-Dragon, Grimble's trials, the swamp, the arena, and the golden egg at the ball.</p>
         <h3>The Party</h3>
-        <p>Mahoraga, Dex, Wyatt, Lucas, and the Ball Wizard — plus whoever you just made.</p>
+        <p>Anvil, Umarion and the Ball Wizard — plus whoever you just made.</p>
         <h3>Rules</h3>
         <p>A hand-written implementation of fifth-edition-style play: d20 tests, advantage,
         conditions, spell slots, and a grid where a square is five feet.</p>`,

@@ -37,12 +37,12 @@ DH.STORY = {
       options: [
         {
           text: 'Yes. Go and ask him to stop.', then: [
-            { t: 'run', id: 'npc_mahoraga' }
+            { t: 'run', id: 'npc_anvil' }
           ]
         },
         {
           text: 'No — go and ask the elf what they are reading.', then: [
-            { t: 'run', id: 'npc_dex' }
+            { t: 'run', id: 'npc_umarion' }
           ]
         },
         {
@@ -57,31 +57,31 @@ DH.STORY = {
     { t: 'run', id: 'act0_all_hands' }
   ],
 
-  npc_mahoraga: [
+  npc_anvil: [
     { t: 'sfx', id: 'hit' },
-    { t: 'say', who: 'Mahoraga', text: '"It gives." *He hits the bar again.* "Iron gives, eventually. Everythin\' does."' },
+    { t: 'say', who: 'Anvil', text: '"It gives." *He hits the bar again.* "Iron gives, eventually. Everythin\' does."' },
     {
       t: 'choice', text: 'He does not stop punching while he talks.',
       options: [
         {
           text: '"It is the middle of the night."', then: [
-            { t: 'say', who: 'Mahoraga', text: '"It\'s a storm. Nobody\'s sleepin\'." *A pause. He looks at your hands, then your face.* "You could hit it too, if you like."' },
+            { t: 'say', who: 'Anvil', text: '"It\'s a storm. Nobody\'s sleepin\'." *A pause. He looks at your hands, then your face.* "You could hit it too, if you like."' },
             {
               t: 'choice', text: '', options: [
                 {
                   text: 'Hit the bar.', then: [
-                    { t: 'check', skill: 'athletics', dc: 12, label: 'Athletics — hit the iron', ok: [{ t: 'say', who: 'Mahoraga', text: '*The bar rings. He grins with a great many teeth.* "Ha! Good. You\'ll do."' }, { t: 'do', fn: () => DH.game.addAffinity('mahoraga', 2, 'Mahoraga') }], fail: [{ t: 'say', who: 'Mahoraga', text: '*Your knuckles scream. He nods, unbothered.* "Yeah. That\'s the first bit."' }, { t: 'do', fn: () => DH.game.addAffinity('mahoraga', 1, 'Mahoraga') }] }
+                    { t: 'check', skill: 'athletics', dc: 12, label: 'Athletics — hit the iron', ok: [{ t: 'say', who: 'Anvil', text: '*The bar rings. He grins with a great many teeth.* "Ha! Good. You\'ll do."' }, { t: 'do', fn: () => DH.game.addAffinity('anvil', 2, 'Anvil') }], fail: [{ t: 'say', who: 'Anvil', text: '*Your knuckles scream. He nods, unbothered.* "Yeah. That\'s the first bit."' }, { t: 'do', fn: () => DH.game.addAffinity('anvil', 1, 'Anvil') }] }
                   ]
                 },
-                { text: 'Decline politely.', then: [{ t: 'say', who: 'Mahoraga', text: '"Suit yerself."' }] }
+                { text: 'Decline politely.', then: [{ t: 'say', who: 'Anvil', text: '"Suit yerself."' }] }
               ]
             }
           ]
         },
         {
           text: '"Why the hands? Why not a hammer?"', then: [
-            { t: 'say', who: 'Mahoraga', text: '"Hammer can be took off ya." *He turns the bar over, considering a fresh spot.* "Hands can\'t."' },
-            { t: 'do', fn: () => DH.game.addAffinity('mahoraga', 1, 'Mahoraga') }
+            { t: 'say', who: 'Anvil', text: '"Hammer can be took off ya." *He turns the bar over, considering a fresh spot.* "Hands can\'t."' },
+            { t: 'do', fn: () => DH.game.addAffinity('anvil', 1, 'Anvil') }
           ]
         },
         { text: 'Say nothing and go back to your hammock.', then: [{ t: 'narr', text: 'He does not seem to notice you leave.' }] }
@@ -89,26 +89,26 @@ DH.STORY = {
     }
   ],
 
-  npc_dex: [
+  npc_umarion: [
     { t: 'say', who: 'The Wood Elf', text: '*Without looking up.* "It\'s a book about tides. It is dreadful. I have read it four times."' },
     {
       t: 'choice', text: '',
       options: [
         {
           text: '"Does the noise not bother you?"', then: [
-            { t: 'say', who: 'The Wood Elf', text: '"Mahoraga? No. He stops eventually." *A page turns.* "Or the iron does. It\'s about even."' },
-            { t: 'do', fn: () => DH.game.addAffinity('dex', 1, 'Dex') }
+            { t: 'say', who: 'The Wood Elf', text: '"Anvil? No. He stops eventually." *A page turns.* "Or the iron does. It\'s about even."' },
+            { t: 'do', fn: () => DH.game.addAffinity('umarion', 1, 'Umarion') }
           ]
         },
         {
           text: '"What is your name?"', then: [
-            { t: 'say', who: 'Dex', text: '"Dex." *They finally look at you, and their eyes catch the lantern in a way human eyes do not.* "You\'re the new one they sent. P.A.C.T. never explains anything. You\'ll get used to it."' },
-            { t: 'do', fn: () => DH.game.addAffinity('dex', 2, 'Dex') }
+            { t: 'say', who: 'Umarion', text: '"Umarion." *They finally look at you, and their eyes catch the lantern in a way human eyes do not.* "You\'re the new one they sent. P.A.C.T. never explains anything. You\'ll get used to it."' },
+            { t: 'do', fn: () => DH.game.addAffinity('umarion', 2, 'Umarion') }
           ]
         },
         {
           text: '"Where exactly are we going?"', then: [
-            { t: 'say', who: 'Dex', text: '"Drakehaven. An island. Somebody there has stopped doing what the higher-ups want." *Shrug.* "That is generally the whole brief."' }
+            { t: 'say', who: 'Umarion', text: '"Drakehaven. An island. Somebody there has stopped doing what the higher-ups want." *Shrug.* "That is generally the whole brief."' }
           ]
         }
       ]
@@ -137,9 +137,9 @@ DH.STORY = {
         },
         {
           text: 'Go up alone and let them sleep.', then: [
-            { t: 'narr', text: 'You leave the three of them where they are. Mahoraga sets the bar down and follows you without being asked. Dex marks their page.' },
-            { t: 'join', who: 'mahoraga' },
-            { t: 'join', who: 'dex' },
+            { t: 'narr', text: 'You leave the three of them where they are. Anvil sets the bar down and follows you without being asked. Umarion marks their page.' },
+            { t: 'join', who: 'anvil' },
+            { t: 'join', who: 'umarion' },
             { t: 'flag', k: 'let_them_sleep' }
           ]
         },
@@ -159,19 +159,14 @@ DH.STORY = {
 
   act0_introduce: [
     { t: 'narr', text: 'You go round the hammocks.' },
-    { t: 'say', who: 'Mahoraga', text: '*The half-orc sets the iron bar down carefully, as though it were the one that might get hurt.* "Bout time somethin\' happened."' },
-    { t: 'join', who: 'mahoraga' },
-    { t: 'say', who: 'Dex', text: '*The wood elf swings out of the hammock without touching the floor awkwardly once.* "If it is nothing, I am going back to my dreadful book."' },
-    { t: 'join', who: 'dex' },
-    { t: 'narr', text: 'The third hammock holds a human in a mail shirt he clearly did not take off to sleep in. He is awake before your hand reaches his shoulder.' },
-    { t: 'say', who: 'Lucas', text: '"Right. Up. Where." *He is already reaching for his sword.*' },
-    { t: 'join', who: 'lucas' },
-    { t: 'narr', text: 'The fourth is a rock gnome in a nightshirt with a spellbook open on his chest, a diagram of a sphere half-finished on the page.' },
+    { t: 'say', who: 'Anvil', text: '*The half-orc sets the iron bar down carefully, as though it were the one that might get hurt.* "Bout time somethin\' happened."' },
+    { t: 'join', who: 'anvil' },
+    { t: 'say', who: 'Umarion', text: '*The wood elf swings out of the hammock without touching the floor awkwardly once.* "If it is nothing, I am going back to my dreadful book."' },
+    { t: 'join', who: 'umarion' },
+    { t: 'narr', text: 'The last hammock holds a rock gnome in a nightshirt with a spellbook open on his chest, a diagram of a sphere half-finished on the page.' },
     { t: 'say', who: 'Ball Wizard', text: '"Mm. Yes. Just — one moment — " *He closes the book on his own thumb.* "Ready."' },
     { t: 'join', who: 'ball_wizard' },
-    { t: 'narr', text: 'And last: a gold dragonborn, broad across the shoulders, who wakes the way people do when they were already dreaming about being called.' },
-    { t: 'say', who: 'Wyatt', text: '"I heard it." *A beat.* "The shouting, I mean. I heard the shouting."' },
-    { t: 'join', who: 'wyatt' }
+    { t: 'narr', text: 'Three of them, then, and you. It is not much of a company. It is the one that is awake.' }
   ],
 
   npc_cabin_boy: [
@@ -545,34 +540,34 @@ DH.STORY = {
     { t: 'narr', text: 'A few moments after you are clear, they have already cast off. The Mary Parker pulls away into the grey.' },
     { t: 'wait', ms: 500 },
     { t: 'sfx', id: 'death' },
-    { t: 'narr', text: 'And right as you step off the dock, Wyatt falls to his knees and starts to shake.' },
+    { t: 'narr', text: 'And right as you step off the dock, your knees hit the boards and you start to shake.' },
     { t: 'music', id: 'vision', restart: true },
     { t: 'wait', ms: 500 },
     { t: 'narr', text: 'You all see it. Not in front of you — behind your eyes. An Ancient Golden Dragon, vast beyond scale, curled in a dark that has no walls.' },
     { t: 'say', who: 'The Ancient Golden Dragon', text: '"Where have they gone. Please. Help me, child."' },
     { t: 'particles', kind: 'gold', n: 40 },
-    { t: 'narr', text: 'His eyes are glowing. So is his mouth.' },
+    { t: 'narr', text: 'Your eyes are glowing. The others can see it. So is your mouth.' },
     { t: 'wait', ms: 400 },
     { t: 'narr', text: 'Behind you, the large pod starts to speak in a man\'s voice.' },
-    { t: 'say', who: 'The Command Pod', text: '"We\'ve heard that the main creatures that are going rogue are dragonic, and we sent out a dragonborn. Feed one to him."' },
+    { t: 'say', who: 'The Command Pod', text: '"We\'ve heard that the main creatures going rogue are dragonic. Something dragonic just spoke through our own recruit. Get one of these into them."' },
     { t: 'sfx', id: 'quest' },
     { t: 'narr', text: 'Five green potions materialise in a pocket you were not aware you had.' },
     { t: 'give', item: 'green_potion', qty: 5 },
     {
-      t: 'choice', text: 'Wyatt is shaking on the boards with light coming out of his mouth.',
+      t: 'choice', text: 'You are on your knees on the boards with light coming out of your mouth.',
       options: [
         {
-          text: 'Feed him a green potion.', then: [
+          text: 'Drink one of the green potions.', then: [
             { t: 'take', item: 'green_potion', qty: 1 },
             { t: 'sfx', id: 'heal' },
-            { t: 'narr', text: 'You get it into him. His eyes stop glowing. He stands up, and puts a hand on your shoulder to do it.' },
-            { t: 'say', who: 'Wyatt', text: '"It wasn\'t asking me." *He wipes his mouth.* "It was asking through me. There\'s a difference and I don\'t like it."' }
+            { t: 'narr', text: 'You get it down. The glow goes out of you. Anvil hauls you up by the back of your coat without being asked.' },
+            { t: 'say', who: () => DH.game.pc().name, text: '"It wasn\'t asking me." *You wipe your mouth.* "It was asking through me. There\'s a difference and I don\'t like it."' }
           ]
         },
         {
-          text: 'Ask him what he saw first.', then: [
-            { t: 'say', who: 'Wyatt', text: '*Not with his own voice.* "WHERE. HAVE. THEY. GONE."' },
-            { t: 'narr', text: 'You feed him the potion. The light goes out. He comes back.' },
+          text: 'Wait. Let it finish saying whatever it is saying.', then: [
+            { t: 'say', who: () => DH.game.pc().name, text: '*Not with your own voice.* "WHERE. HAVE. THEY. GONE."' },
+            { t: 'narr', text: 'Umarion puts the potion in your hand and folds your fingers round it. You drink. The light goes out.' },
             { t: 'take', item: 'green_potion', qty: 1 }
           ]
         }
@@ -1172,11 +1167,11 @@ DH.STORY = {
       t: 'choice', text: 'The rock is coming. What do you do?',
       options: [
         {
-          text: 'Brace it. Lucas and the Ball Wizard, with everyone behind them.', then: [
+          text: 'Brace it. Anvil and the Ball Wizard, with everyone behind them.', then: [
             {
               t: 'check', skill: 'athletics', dc: 13, by: 'party', label: 'Athletics — brace the boulder',
               ok: [
-                { t: 'narr', text: 'Lucas gets his shoulder into it and the Ball Wizard puts something invisible and stubborn between the stone and all of you. It grinds, and it stops.' },
+                { t: 'narr', text: 'Anvil gets his shoulder into it and the Ball Wizard puts something invisible and stubborn between the stone and all of you. It grinds, and it stops.' },
                 { t: 'flag', k: 'rock_held' }
               ],
               fail: [
@@ -1438,7 +1433,7 @@ DH.STORY = {
     { t: 'give', item: 'endless_quiver' },
     { t: 'give', item: 'cloak_of_the_quiet' },
     { t: 'give', item: 'tinkers_watch' },
-    { t: 'say', who: 'Grimble', text: '"I hope you enjoy. Ah — I must tell you about this. I made a potion to make dragons not, well, crazy." *He frowns at Wyatt.* "Wait. How is that one not crazy?"' },
+    { t: 'say', who: 'Grimble', text: '"I hope you enjoy. Ah — I must tell you about this. I made a potion to make dragons not, well, crazy." *He peers up at you and frowns.* "Wait. Something spoke through you on that dock and you are standing here perfectly polite. How?"' },
     {
       t: 'choice', text: '',
       options: [
@@ -2099,7 +2094,7 @@ DH.STORY = {
     },
     { t: 'say', who: 'The Command Pod', text: '*It speaks up from the bottom of somebody\'s bag, in that same flat man\'s voice.* "Understood. Hold position. We are sending a ship."' },
     { t: 'wait', ms: 400 },
-    { t: 'say', who: 'Wyatt', text: '"It said please." *He is looking east.* "The big one. It said please, and nobody has said that to me my whole life."' },
+    { t: 'say', who: 'Anvil', text: '"It said please." *He is looking east.* "The big one. It said please, and nobody has said that to me my whole life."' },
     { t: 'flag', k: 'act10_done' },
     { t: 'quest', id: 'east', title: 'East, Past the Nothing', desc: 'Nine golden eggs left this island forty years ago. Something ancient wants them back, and it is speaking through every dragon between here and the horizon. A ship is coming.' },
     { t: 'chapter', label: 'END OF ACT TEN', title: 'A ship is coming', sub: 'to be continued', ms: 4200 },

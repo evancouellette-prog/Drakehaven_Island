@@ -101,10 +101,8 @@ DH.MAPS = {
     ],
     lights: [{ x: 10, y: 5, r: 60, flicker: true }, { x: 20, y: 2, r: 50, flicker: true }],
     npcs: [
-      { id: 'mahoraga', x: 11, y: 5, name: 'Mahoraga', script: 'npc_mahoraga', visualFrom: 'mahoraga', facing: 'up' },
-      { id: 'dex', x: 5, y: 6, name: 'Wood Elf', script: 'npc_dex', visualFrom: 'dex', facing: 'right' },
-      { id: 'wyatt', x: 15, y: 6, name: 'Sleeping Dragonborn', script: 'npc_sleeper', visualFrom: 'wyatt', facing: 'down', asleep: true },
-      { id: 'lucas', x: 3, y: 2, name: 'Sleeping Human', script: 'npc_sleeper', visualFrom: 'lucas', facing: 'down', asleep: true },
+      { id: 'anvil', x: 11, y: 5, name: 'Anvil', script: 'npc_anvil', visualFrom: 'anvil', facing: 'up' },
+      { id: 'umarion', x: 5, y: 6, name: 'Umarion', script: 'npc_umarion', visualFrom: 'umarion', facing: 'right' },
       { id: 'ball_wizard', x: 6, y: 4, name: 'Sleeping Gnome', script: 'npc_sleeper', visualFrom: 'ball_wizard', facing: 'down', asleep: true },
       { id: 'cabin_boy', x: 23, y: 3, name: 'A Small Man', script: 'npc_cabin_boy', hidden: 'called_on_deck', appearAfter: 'boy_arrives', visual: { body: 'humanoid', skin: '#e8c0a0', hair: '#c2a668', cloth: '#6a5a4a', cloth2: '#4a3a2a', hairStyle: 'short', smallBody: true }, scale: 0.8 }
     ],

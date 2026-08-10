@@ -99,6 +99,10 @@ DH.audio = (function () {
     hit:      () => { voice({ wave: 'noise', dur: 0.14, gain: 0.3, filter: 'lowpass', cut: 1800, cutTo: 200 }); voice({ wave: 'triangle', note: 110, to: 55, dur: 0.16, gain: 0.24 }); },
     crit:     () => { voice({ wave: 'noise', dur: 0.25, gain: 0.34, filter: 'lowpass', cut: 3000, cutTo: 200 }); [0, .05, .1].forEach((d, i) => voice({ wave: 'square', note: ['C5', 'E5', 'G5'][i], dur: 0.16, gain: 0.16, at: ac.currentTime + d })); },
     miss:     () => voice({ wave: 'noise', dur: 0.13, gain: 0.16, filter: 'highpass', cut: 1400 }),
+    /* The wind-up, played as the blow starts, so a swing is audible before you
+       learn whether it connected. 'miss' is the whiff that follows a failure. */
+    swing:    () => voice({ wave: 'noise', dur: 0.1, gain: 0.13, filter: 'bandpass', cut: 2600, cutTo: 700, q: 1.2 }),
+    bow:      () => { voice({ wave: 'noise', dur: 0.07, gain: 0.16, filter: 'highpass', cut: 3400 }); voice({ wave: 'triangle', note: 'D4', to: 'A3', dur: 0.12, gain: 0.1 }); },
     dice:     () => { for (let i = 0; i < 5; i++) voice({ wave: 'noise', dur: 0.03, gain: 0.11, filter: 'bandpass', cut: 1600 + i * 500, q: 6, at: ac.currentTime + i * 0.045 }); },
     coin:     () => { voice({ wave: 'square', note: 'B5', dur: 0.07, gain: 0.12 }); voice({ wave: 'square', note: 'E6', dur: 0.14, gain: 0.10, at: ac.currentTime + 0.06 }); },
     heal:     () => [0, .07, .14].forEach((d, i) => voice({ wave: 'sine', note: ['E5', 'A5', 'C6'][i], dur: 0.4, gain: 0.16, at: ac.currentTime + d })),

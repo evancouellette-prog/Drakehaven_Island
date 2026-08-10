@@ -406,8 +406,8 @@ const hero = DH.char.create({
   fightingStyle: 'defense'
 });
 DH.game.state.party = [hero];
-['mahoraga', 'dex', 'wyatt', 'lucas', 'ball_wizard'].forEach(id => DH.game.addCompanion(id));
-ok(DH.game.party().length === 6, 'the party is the player plus five companions');
+['anvil', 'umarion', 'ball_wizard'].forEach(id => DH.game.addCompanion(id));
+ok(DH.game.party().length === 4, 'the party is the player plus three companions');
 DH.game.party().forEach(c => {
   ok(c.hpMax > 0, c.name + ' has hit points in the party');
   ok(c.ac > 0, c.name + ' has AC in the party');
@@ -475,7 +475,7 @@ DH.game.state.party = [DH.char.create({
   name: 'Walker', raceId: 'wood_elf', classId: 'ranger', subclassId: 'hunter', backgroundId: 'outlander',
   abilities: { str: 12, dex: 15, con: 13, int: 10, wis: 14, cha: 8 }, skills: ['survival', 'perception', 'stealth']
 })];
-DH.game.addCompanion('mahoraga');
+DH.game.addCompanion('anvil');
 /* mark every one-shot trigger as already seen: this pass is about whether the
    world renders and collides, not about the story */
 Object.keys(DH.MAPS).forEach(id => {
@@ -517,7 +517,7 @@ const saveHero = DH.char.create({
   skills: ['athletics', 'persuasion']
 });
 DH.game.state.party = [saveHero];
-DH.game.addCompanion('dex');
+DH.game.addCompanion('umarion');
 DH.game.issuePods();
 DH.game.setFlag('act0_done');
 DH.game.addQuest('test', 'A Test', 'Testing.');

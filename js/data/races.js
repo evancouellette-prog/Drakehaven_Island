@@ -25,7 +25,13 @@ DH.RACES = [
       { name: 'Mask of the Wild', desc: 'You can hide when only lightly obscured by foliage, rain, mist or falling snow.', effects: ['mask_of_wild'] },
       { name: 'Trance', desc: 'Four hours of meditation counts as a long rest.', effects: ['trance'] }
     ],
-    look: { skin: ['#e8d0b0', '#d8b890', '#c2a878', '#a8865f'], hair: ['#3a2a18', '#6a5a2a', '#8a7a4a', '#2b3a2a', '#c2b088'], flags: { ears: 'long' } }
+    /* Wood elves take their colour from the wood. The green tones are the ones
+       who have lived under canopy long enough to match it. */
+    look: {
+      skin: ['#e8d0b0', '#d8b890', '#c2a878', '#a8865f', '#a8bd8a', '#8aa87a', '#6f9a68', '#527f52'],
+      hair: ['#3a2a18', '#6a5a2a', '#8a7a4a', '#2b3a2a', '#c2b088', '#4a6b3a'],
+      flags: { ears: 'long' }
+    }
   },
   {
     id: 'high_elf', name: 'High Elf', size: 'Medium', speed: 30,

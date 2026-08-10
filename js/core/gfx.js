@@ -6,7 +6,12 @@ DH.gfx = (function () {
   'use strict';
   const U = DH.util;
 
-  const VW = 640, VH = 360;          // virtual resolution
+  /* Virtual resolution. An art pixel's size on screen is zoom × (screenWidth/VW),
+     so raising VW without touching the zoom levels is what makes the picture
+     finer: 800 instead of 640 puts 25% more pixels across the same window, and
+     every art pixel lands 20% smaller. Sixteen-by-nine is preserved exactly, and
+     TILE and CELL stay put so no painter's coordinates change. */
+  const VW = 800, VH = 450;          // virtual resolution
   const TILE = 16;                   // overworld tile
   const CELL = 24;                   // combat grid cell
 
@@ -38,6 +43,17 @@ DH.gfx = (function () {
     fungus: '#7a5f8a', fungus2: '#9a7faa',
     ink: '#f2e6cd', inkDim: '#bda887', shadow: 'rgba(0,0,0,.35)'
   };
+
+  /* Lighten or darken a #rrggbb by a factor, for shading derived from whatever
+     colour a spec happens to carry. k < 1 darkens, k > 1 lightens. */
+  function shade(hex, k) {
+    if (typeof hex !== 'string' || hex.charAt(0) !== '#' || hex.length < 7) return hex;
+    const c = (i) => {
+      const v = Math.round(parseInt(hex.substr(i, 2), 16) * k);
+      return (v < 0 ? 0 : v > 255 ? 255 : v).toString(16).padStart(2, '0');
+    };
+    return '#' + c(1) + c(3) + c(5);
+  }
 
   /* Random-but-stable value per tile so terrain has texture without noise arrays. */
   function hash(x, y, s) {
@@ -285,32 +301,55 @@ DH.gfx = (function () {
 
   /* ================= PROPS ================= */
   const PROPS = {
+    /* A barrel is a bulge, staves and two hoops. Drawing it as a plain rectangle
+       with stripes read as a crate, so the silhouette carries the shape now:
+       narrow at both rims, widest at the belly, with the lid seen slightly from
+       above the way everything else on this tile grid is. */
     barrel(x, y, o) {
-      const hp = o && o.broken;
-      if (hp) { rect(x + 1, y + 10, 14, 4, C.wood3); rect(x + 3, y + 8, 4, 3, C.wood); return; }
-      rect(x + 2, y + 2, 12, 13, C.wood);
-      rect(x + 2, y + 4, 12, 2, C.metal); rect(x + 2, y + 11, 12, 2, C.metal);
-      rect(x + 3, y + 2, 3, 13, C.wood2);
-      stroke(x + 2, y + 2, 12, 13, '#3a2618', 1);
+      if (o && o.broken) {
+        rect(x + 1, y + 12, 14, 3, C.wood3);
+        poly([[x + 2, y + 12], [x + 5, y + 5], [x + 7, y + 12]], C.wood);
+        poly([[x + 9, y + 12], [x + 12, y + 7], [x + 14, y + 12]], C.wood2);
+        rect(x + 2, y + 14, 12, 1, C.metal);
+        return;
+      }
+      poly([[x + 4, y + 2], [x + 12, y + 2], [x + 14, y + 8], [x + 12, y + 15], [x + 4, y + 15], [x + 2, y + 8]], C.wood);
+      poly([[x + 4, y + 2], [x + 6, y + 2], [x + 5, y + 15], [x + 3, y + 15]], C.wood2);  // lit stave
+      for (const sx of [x + 7, x + 10]) rect(sx, y + 3, 1, 12, '#4a3220');
+      rect(x + 3, y + 5, 11, 2, C.metal);            // upper hoop
+      rect(x + 2, y + 11, 12, 2, C.metal);           // lower hoop, on the belly
+      ellipse(x + 8, y + 3, 4, 1.5, C.woodLite);     // lid
+      ellipseS(x + 8, y + 3, 4, 1.5, '#4a3220', 1);
     },
     coldbarrel(x, y) {
-      rect(x + 2, y + 2, 12, 13, '#3f5f7a');
-      rect(x + 2, y + 4, 12, 2, C.ice); rect(x + 2, y + 11, 12, 2, C.ice);
-      rect(x + 4, y + 1, 8, 2, C.snow);
+      poly([[x + 4, y + 2], [x + 12, y + 2], [x + 14, y + 8], [x + 12, y + 15], [x + 4, y + 15], [x + 2, y + 8]], '#3f5f7a');
+      poly([[x + 4, y + 2], [x + 6, y + 2], [x + 5, y + 15], [x + 3, y + 15]], '#527794');
+      rect(x + 3, y + 5, 11, 2, C.ice); rect(x + 2, y + 11, 12, 2, C.ice);
+      ellipse(x + 8, y + 3, 4, 1.5, '#8fc4dc');      // water surface, iced over
+      rect(x + 4, y + 1, 8, 2, C.snow);              // snow gathered on the rim
       alpha(.5 + Math.sin(tick * .1) * .2, () => rect(x + 5, y - 2, 2, 3, C.ice));
     },
     crate(x, y) {
       rect(x + 2, y + 3, 12, 12, C.wood2);
-      stroke(x + 2, y + 3, 12, 12, '#3a2618', 1);
-      lineTo(x + 2, y + 3, x + 14, y + 15, C.wood3, 1);
-      lineTo(x + 14, y + 3, x + 2, y + 15, C.wood3, 1);
+      rect(x + 2, y + 3, 12, 2, C.woodLite);         // lit lid edge
+      lineTo(x + 3, y + 5, x + 13, y + 14, C.wood3, 1);
+      lineTo(x + 13, y + 5, x + 3, y + 14, C.wood3, 1);
+      for (const c of [[2, 3], [12, 3], [2, 13], [12, 13]]) rect(x + c[0], y + c[1], 2, 2, C.metal);
+      stroke(x + 2, y + 3, 12, 12, '#33220f', 1);
     },
     bottle(x, y) {
-      rect(x + 6, y + 8, 4, 6, '#4a8a6a'); rect(x + 7, y + 5, 2, 3, '#4a8a6a');
-      rect(x + 6, y + 9, 1, 4, '#8ad4aa');
+      rect(x + 7, y + 3, 2, 1, '#7a5a3a');           // cork
+      rect(x + 7, y + 4, 2, 4, '#3f7a5f');           // neck
+      poly([[x + 6, y + 8], [x + 10, y + 8], [x + 11, y + 10], [x + 11, y + 14], [x + 5, y + 14], [x + 5, y + 10]], '#4a8a6a');
+      rect(x + 6, y + 10, 1, 4, '#8ad4aa');          // highlight down the shoulder
+      rect(x + 5, y + 11, 6, 2, '#d8cbb4');          // label
     },
+    /* Coiled on the deck, not laid out in a line — a line of dashes looked like
+       a ladder. */
     rope(x, y) {
-      for (let i = 0; i < 16; i += 3) rect(x + 7 + (i % 6 === 0 ? 0 : 1), y + i, 2, 2, '#a68a5c');
+      ellipseS(x + 8, y + 11, 6, 4, '#a68a5c', 2);
+      ellipseS(x + 8, y + 10, 4, 2.5, '#8a7350', 2);
+      ellipseS(x + 8, y + 9, 2, 1.5, '#a68a5c', 2);
     },
     rigging(x, y) {
       lineTo(x, y, x + 16, y + 16, '#8a7350', 1);
@@ -318,32 +357,90 @@ DH.gfx = (function () {
     },
     mast(x, y) { rect(x + 5, y, 6, 16, C.wood3); rect(x + 6, y, 2, 16, C.wood); },
     table(x, y) {
-      rect(x + 1, y + 4, 14, 8, C.wood2); rect(x + 1, y + 4, 14, 2, C.woodLite);
-      rect(x + 2, y + 12, 2, 3, C.wood3); rect(x + 12, y + 12, 2, 3, C.wood3);
+      rect(x + 1, y + 4, 14, 7, C.wood2);
+      rect(x + 1, y + 4, 14, 1, C.woodLite);         // lit near edge
+      lineTo(x + 1, y + 7, x + 15, y + 7, C.wood, 1);   // plank seam
+      rect(x + 1, y + 10, 14, 1, C.wood3);
+      rect(x + 2, y + 11, 2, 4, C.wood3); rect(x + 12, y + 11, 2, 4, C.wood3);
     },
-    chair(x, y) { rect(x + 4, y + 6, 8, 6, C.wood); rect(x + 4, y + 2, 2, 6, C.wood3); },
+    chair(x, y) {
+      rect(x + 4, y + 2, 8, 2, C.wood2);             // back rail
+      rect(x + 4, y + 4, 1, 4, C.wood3); rect(x + 11, y + 4, 1, 4, C.wood3);
+      rect(x + 3, y + 8, 10, 3, C.wood);             // seat
+      rect(x + 3, y + 8, 10, 1, C.woodLite);
+      rect(x + 4, y + 11, 2, 4, C.wood3); rect(x + 10, y + 11, 2, 4, C.wood3);
+    },
+    /* A bunk, read from above: headboard, pillow at the head, blanket turned
+       down over the legs. The old one was two stacked rectangles that could as
+       easily have been a rug. */
     bed(x, y) {
-      rect(x + 1, y + 1, 14, 14, C.wood3);
-      rect(x + 2, y + 4, 12, 10, '#c8bca8'); rect(x + 3, y + 2, 10, 4, '#8a3f3a');
+      rect(x + 1, y + 1, 14, 15, C.wood3);
+      rect(x + 1, y + 1, 14, 2, C.wood);             // headboard rail
+      rect(x + 1, y + 14, 14, 2, C.wood);            // foot rail
+      rect(x + 2, y + 3, 12, 11, '#cfc3ad');         // mattress
+      rect(x + 3, y + 4, 10, 3, '#efe7d6');          // pillow
+      rect(x + 3, y + 6, 10, 1, '#bdb29c');
+      rect(x + 2, y + 8, 12, 6, '#7f3a37');          // blanket
+      rect(x + 2, y + 8, 12, 1, '#9c4a45');          // turned-down fold
+      rect(x + 2, y + 11, 12, 1, '#6a2f2c');         // crease
+      rect(x + 1, y + 1, 2, 2, C.woodLite); rect(x + 13, y + 1, 2, 2, C.woodLite);
+      stroke(x + 1, y + 1, 14, 15, '#33220f', 1);
     },
+    /* Seen from above, a hammock is a sling: two knots lashed to the beams, cords
+       gathering to each end, and a long sagging hollow of canvas between them.
+       Drawn as a trapezoid it read as a wash tub, which is not restful. */
     hammock(x, y) {
-      const sw = Math.sin(tick * .04) * 2;
-      lineTo(x, y + 2, x + 16, y + 2, '#8a7350', 1);
-      poly([[x + 1, y + 3], [x + 15, y + 3], [x + 12 + sw, y + 10], [x + 4 + sw, y + 10]], '#b8a888');
+      const sw = Math.sin(tick * .04) * 1.5;
+      rect(x, y + 7, 2, 2, '#6a5a3a'); rect(x + 14, y + 7, 2, 2, '#6a5a3a');   // lashings
+      for (const t of [-2.5, 0, 2.5]) {
+        lineTo(x + 2, y + 8, x + 5, y + 8 + t + sw, '#a68a5c', 1);
+        lineTo(x + 14, y + 8, x + 11, y + 8 + t + sw, '#a68a5c', 1);
+      }
+      ellipse(x + 8, y + 9 + sw, 6, 4, '#c0b092');          // the sling
+      ellipse(x + 8, y + 10 + sw, 4.5, 2.2, '#a89878');     // the hollow it sags into
+      for (let i = 0; i < 4; i++) {
+        lineTo(x + 5 + i * 2, y + 6.5 + sw, x + 5 + i * 2, y + 11.5 + sw, '#9a8460', 1);
+      }
+      ellipseS(x + 8, y + 9 + sw, 6, 4, '#8a7350', 1);
     },
     chest(x, y, o) {
-      rect(x + 2, y + 6, 12, 8, C.wood);
-      rect(x + 2, y + 4, 12, 3, C.wood2);
-      rect(x + 2, y + 6, 12, 1, C.goldDim);
-      rect(x + 7, y + 8, 2, 3, o && o.open ? C.stone : C.gold);
+      const open = o && o.open;
+      rect(x + 2, y + 7, 12, 7, C.wood);
+      rect(x + 2, y + 13, 12, 1, C.wood3);
+      if (open) {
+        rect(x + 2, y + 7, 12, 2, '#1a1209');        // dark interior
+        rect(x + 2, y + 2, 12, 4, C.wood3);          // lid thrown back
+      } else {
+        poly([[x + 2, y + 7], [x + 3, y + 4], [x + 13, y + 4], [x + 14, y + 7]], C.wood2);
+        rect(x + 2, y + 6, 12, 1, C.goldDim);
+      }
+      rect(x + 4, y + 4, 1, 10, C.metal); rect(x + 11, y + 4, 1, 10, C.metal);
+      rect(x + 7, y + 7, 3, 4, open ? C.stone : C.gold);
+      rect(x + 8, y + 8, 1, 2, '#1a1410');           // keyhole
     },
-    anvil(x, y) { rect(x + 3, y + 6, 10, 4, C.metal); rect(x + 6, y + 10, 4, 4, C.stone3); rect(x + 2, y + 5, 12, 2, C.metal2); },
+    /* horn, face, waist, foot — the outline a smith would recognise */
+    anvil(x, y) {
+      poly([[x + 2, y + 6], [x + 13, y + 6], [x + 15, y + 7], [x + 13, y + 8], [x + 2, y + 8]], C.metal2);
+      rect(x + 2, y + 6, 11, 1, '#b8c0cc');          // polished face
+      rect(x + 5, y + 8, 5, 3, C.metal);             // waist
+      rect(x + 3, y + 11, 9, 3, C.stone3);           // foot
+      rect(x + 3, y + 11, 9, 1, C.stone2);
+    },
     forge(x, y) {
       rect(x + 2, y + 4, 12, 11, C.stone3);
       const f = Math.sin(tick * .13) * .5 + .5;
       rect(x + 5, y + 8, 6, 5, f > .5 ? C.lava2 : C.lava);
     },
-    sign(x, y) { rect(x + 7, y + 8, 2, 7, C.wood3); rect(x + 2, y + 2, 12, 7, C.wood2); rect(x + 4, y + 4, 8, 1, C.wood3); rect(x + 4, y + 6, 6, 1, C.wood3); },
+    sign(x, y) {
+      rect(x + 7, y + 9, 2, 7, C.wood3);
+      rect(x + 6, y + 15, 4, 1, '#2b1c10');          // it stands in something
+      rect(x + 1, y + 2, 14, 8, C.wood2);
+      rect(x + 1, y + 2, 14, 1, C.woodLite);
+      stroke(x + 1, y + 2, 14, 8, '#33220f', 1);
+      rect(x + 3, y + 4, 9, 1, '#4a3220');           // lines of writing
+      rect(x + 3, y + 6, 7, 1, '#4a3220');
+      rect(x + 3, y + 8, 5, 1, '#4a3220');
+    },
     tree(x, y) {
       rect(x + 6, y + 9, 4, 7, C.wood3);
       ellipse(x + 8, y + 5, 8, 7, C.grass3);
@@ -379,10 +476,15 @@ DH.gfx = (function () {
       if (g >= 4) ellipse(x + 8, y + 6, 2, 3, '#d45f8a');
     },
     stall(x, y) {
-      rect(x + 1, y + 6, 14, 8, C.wood);
-      rect(x, y + 2, 16, 5, '#8a3f3a');
-      for (let i = 0; i < 16; i += 4) rect(x + i, y + 2, 2, 5, '#c25f56');
-      rect(x + 3, y + 9, 3, 2, C.arcane); rect(x + 9, y + 9, 3, 2, C.poison);
+      rect(x + 1, y + 8, 14, 7, C.wood);             // counter
+      rect(x + 1, y + 8, 14, 1, C.woodLite);
+      rect(x, y + 1, 16, 5, '#8a3f3a');              // striped awning
+      for (let i = 0; i < 16; i += 4) rect(x + i, y + 1, 2, 5, '#c25f56');
+      for (let i = 0; i < 16; i += 2) rect(x + i, y + 6, 2, 1, i % 4 ? '#8a3f3a' : '#c25f56');
+      rect(x + 1, y + 6, 1, 3, C.wood3); rect(x + 14, y + 6, 1, 3, C.wood3);
+      rect(x + 3, y + 9, 3, 3, C.arcane);            // wares laid out
+      rect(x + 7, y + 10, 2, 2, C.poison);
+      ellipse(x + 12, y + 11, 2, 2, C.gold);
     },
     torch(x, y) {
       rect(x + 7, y + 6, 2, 9, C.wood3);
@@ -414,7 +516,15 @@ DH.gfx = (function () {
       if (!(o && o.open)) { rect(x + 2, y + 1, 12, 14, C.wood); rect(x + 11, y + 7, 2, 2, C.gold); }
     },
     stairs(x, y) { for (let i = 0; i < 4; i++) rect(x + i * 4, y + i * 4, 16 - i * 4, 4, i % 2 ? C.stone2 : C.stone); },
-    bar(x, y) { rect(x, y + 4, 16, 10, C.wood3); rect(x, y + 4, 16, 2, C.woodLite); rect(x + 3, y + 1, 2, 4, '#c8e4a0'); },
+    bar(x, y) {
+      rect(x, y + 5, 16, 10, C.wood3);
+      rect(x, y + 5, 16, 2, C.woodLite);             // polished top
+      lineTo(x, y + 9, x + 16, y + 9, '#3a2618', 1);
+      rect(x + 3, y + 1, 3, 4, C.metal);             // a tankard left out
+      rect(x + 3, y + 1, 3, 1, '#c8e4a0');           // froth
+      rect(x + 6, y + 2, 1, 2, C.metal);             // handle
+      rect(x + 11, y + 3, 3, 2, '#c8bca8');          // bar rag
+    },
     bookshelf(x, y) {
       rect(x + 1, y, 14, 16, C.wood3);
       for (let r = 0; r < 3; r++) for (let i = 0; i < 5; i++)
@@ -503,32 +613,66 @@ DH.gfx = (function () {
     const x = cx - W / 2, top = by - H + bob;
     shadowBlob(cx, by, 6 * s);
 
+    /* Tail first, so the legs and body paint over its root. Drawn after them it
+       lay across the thighs like a belt, which is what looked wrong. It sweeps
+       out low and behind, and thins toward the tip. */
+    if (p.tail) {
+      const w = Math.sin(tick * .1 + (o.phase || 0)) * 3 * s;
+      const tc = p.tailCol || p.scales || p.fur || sk;
+      const root = by - 7 * s + bob;                  // hip height, behind the legs
+      poly([[cx - 1 * s, root - 1 * s], [cx - 7 * s + w, root - 3 * s],
+      [cx - 10 * s + w, root + 1 * s], [cx - 6 * s + w, root + 2 * s],
+      [cx - 1 * s, root + 2.5 * s]], tc);
+      /* a darker underside sells the curve without a second silhouette */
+      alpha(.35, () => poly([[cx - 6 * s + w, root + 1.2 * s],
+      [cx - 10 * s + w, root + 1 * s], [cx - 6 * s + w, root + 2 * s]], '#000'));
+    }
+
     // legs
     const stride = o.moving ? Math.round(Math.sin(tick * .3) * 2) : 0;
     rect(x + 2 * s, by - 7 * s + bob, 3.5 * s, 7 * s, cl2);
     rect(x + 6.5 * s, by - 7 * s + bob, 3.5 * s, 7 * s, cl2);
-    rect(x + 1.5 * s + stride, by - 1.5 * s + bob, 4 * s, 2 * s, '#2b2118');
-    rect(x + 6.5 * s - stride, by - 1.5 * s + bob, 4 * s, 2 * s, '#2b2118');
+    /* the trailing leg sits in its own shadow, which is what separates the two */
+    rect(x + 6.5 * s, by - 7 * s + bob, 1 * s, 7 * s, shade(cl2, .72));
+    const boot = '#2b2118';
+    rect(x + 1.5 * s + stride, by - 1.5 * s + bob, 4 * s, 2 * s, boot);
+    rect(x + 6.5 * s - stride, by - 1.5 * s + bob, 4 * s, 2 * s, boot);
+    rect(x + 1.5 * s + stride, by - .5 * s + bob, 4 * s, .75 * s, shade(boot, .6));   // soles
+    rect(x + 6.5 * s - stride, by - .5 * s + bob, 4 * s, .75 * s, shade(boot, .6));
     // torso
     rect(x + 1.5 * s, top + 7 * s, 9 * s, 9 * s, cl);
     rect(x + 1.5 * s, top + 7 * s, 9 * s, 2 * s, p.cloth3 || cl2);
-    if (p.armor) { rect(x + 1.5 * s, top + 8 * s, 9 * s, 5 * s, p.armor); rect(x + 5 * s, top + 8 * s, 2 * s, 5 * s, C.metal2); }
+    /* lit from the upper left, so the body reads as a body and not a flat panel */
+    rect(x + 1.5 * s, top + 9 * s, 1 * s, 7 * s, shade(cl, 1.18));
+    rect(x + 9.5 * s, top + 9 * s, 1 * s, 7 * s, shade(cl, .74));
+    if (p.armor) {
+      rect(x + 1.5 * s, top + 8 * s, 9 * s, 5 * s, p.armor);
+      rect(x + 1.5 * s, top + 8 * s, 9 * s, 1 * s, shade(p.armor, 1.25));
+      rect(x + 5 * s, top + 8 * s, 2 * s, 5 * s, C.metal2);
+    }
     if (p.belt) rect(x + 1.5 * s, top + 13 * s, 9 * s, 1.5 * s, p.belt);
     // arms
     const swing = o.moving ? Math.round(Math.sin(tick * .3) * 2) : 0;
     rect(x - .5 * s, top + 8 * s - swing, 2.5 * s, 7 * s, sk);
     rect(x + 10 * s, top + 8 * s + swing, 2.5 * s, 7 * s, sk);
+    rect(x + 12 * s, top + 8 * s + swing, .5 * s, 7 * s, shade(sk, .76));   // outer edge
     if (p.sleeves) { rect(x - .5 * s, top + 8 * s - swing, 2.5 * s, 3.5 * s, cl); rect(x + 10 * s, top + 8 * s + swing, 2.5 * s, 3.5 * s, cl); }
     // head
     const hy = top + 1 * s;
+    rect(x + 3.5 * s, hy + 6 * s, 5 * s, 1.5 * s, shade(sk, .7));     // neck, in shadow
     rect(x + 2.5 * s, hy, 7 * s, 7 * s, sk);
+    rect(x + 8.5 * s, hy + 1 * s, 1 * s, 6 * s, shade(sk, .8));       // cheek turning away
     if (p.scales) { rect(x + 2.5 * s, hy, 7 * s, 2 * s, p.scales); rect(x + 8 * s, hy + 2 * s, 2 * s, 4 * s, p.scales); }
     // face
     if (f !== 'up') {
       const ey = hy + 3 * s;
+      rect(x + 3 * s, ey - 1 * s, 6 * s, .75 * s, shade(sk, .72));    // brow
       if (f === 'left') { rect(x + 3 * s, ey, 1.5 * s, 1.5 * s, '#1a1410'); }
       else if (f === 'right') { rect(x + 7.5 * s, ey, 1.5 * s, 1.5 * s, '#1a1410'); }
-      else { rect(x + 3.5 * s, ey, 1.5 * s, 1.5 * s, '#1a1410'); rect(x + 7 * s, ey, 1.5 * s, 1.5 * s, '#1a1410'); }
+      else {
+        rect(x + 3.5 * s, ey, 1.5 * s, 1.5 * s, '#1a1410'); rect(x + 7 * s, ey, 1.5 * s, 1.5 * s, '#1a1410');
+        rect(x + 5.5 * s, ey + 2.5 * s, 1.5 * s, .75 * s, shade(sk, .74));   // mouth
+      }
     }
     if (p.snout && f !== 'up') { rect(x + (f === 'left' ? 1 * s : f === 'right' ? 8.5 * s : 4.5 * s), hy + 4.5 * s, 3 * s, 2.5 * s, p.scales || sk); }
     if (p.beard) { rect(x + 3 * s, hy + 5.5 * s, 6 * s, 3.5 * s, p.beard); rect(x + 4 * s, hy + 8 * s, 4 * s, 2 * s, p.beard); }
@@ -548,11 +692,6 @@ DH.gfx = (function () {
     if (p.horns === 'bull') { rect(x - 2 * s, hy - 1 * s, 4 * s, 1.5 * s, '#e8dcc0'); rect(x + 10 * s, hy - 1 * s, 4 * s, 1.5 * s, '#e8dcc0'); rect(x - 2.5 * s, hy - 3 * s, 1.5 * s, 2.5 * s, '#e8dcc0'); rect(x + 13 * s, hy - 3 * s, 1.5 * s, 2.5 * s, '#e8dcc0'); }
     if (p.horns === 'spike') { poly([[x + 3 * s, hy - 1 * s], [x + 4 * s, hy - 4.5 * s], [x + 5 * s, hy - 1 * s]], p.hornCol || '#8a3f3a'); poly([[x + 7 * s, hy - 1 * s], [x + 8 * s, hy - 4.5 * s], [x + 9 * s, hy - 1 * s]], p.hornCol || '#8a3f3a'); }
     if (p.tusks) { rect(x + 3.5 * s, hy + 6 * s, 1.5 * s, 2 * s, '#e8dcc0'); rect(x + 7 * s, hy + 6 * s, 1.5 * s, 2 * s, '#e8dcc0'); }
-    // tail
-    if (p.tail) {
-      const w = Math.sin(tick * .1) * 3;
-      poly([[cx - 1 * s, by - 6 * s + bob], [cx - 6 * s + w, by - 9 * s + bob], [cx - 7 * s + w, by - 6 * s + bob], [cx - 1 * s, by - 3 * s + bob]], p.scales || p.fur || sk);
-    }
     if (p.wings) {
       const flap = Math.sin(tick * .15) * 3;
       poly([[cx - 4 * s, by - 15 * s + bob], [cx - 13 * s, by - 20 * s - flap + bob], [cx - 11 * s, by - 11 * s + bob]], p.wingCol || '#5a4a7a');
@@ -709,6 +848,51 @@ DH.gfx = (function () {
     body(cx, by, spec || {}, o || {});
   }
 
+  /* ---------- portraits ----------
+     A head-and-shoulders bust on its own canvas, for the dialogue box. The
+     creature painters all draw through this module's ctx and camera, so rather
+     than duplicating every sprite at portrait scale we point those two at a
+     scratch canvas and let the existing art draw itself much larger.
+
+     Framing differs by body: a humanoid is cropped to the head, while a dragon
+     or a beast is only recognisable whole, and its head sits off to one side. */
+  const FRAMING = {
+    /* scale is derived so `keep` world-pixels of the figure fill the canvas.
+       `feet` sits below the frame for a bust; pushing it past 22 leaves headroom
+       for hair, horns and a mohawk, which were being clipped at the top. */
+    humanoid: { keep: 13, feet: 24.5, cx: .5 },
+    dragon: { keep: 42, feet: 4, cx: .66 },
+    beast: { keep: 24, feet: 3, cx: .62 },
+    construct: { keep: 38, feet: 3, cx: .5 },
+    eyeball: { keep: 34, feet: 6, cx: .5 },
+    ooze: { keep: 28, feet: 3, cx: .5 }
+  };
+  function portrait(spec, px) {
+    px = px || 72;
+    const c = document.createElement('canvas');
+    c.width = px; c.height = px;
+    const pctx = c.getContext('2d');
+    pctx.imageSmoothingEnabled = false;
+
+    /* a lit ground behind the figure, so pale and dark skins both read */
+    const g = pctx.createLinearGradient(0, 0, 0, px);
+    g.addColorStop(0, '#1d2740'); g.addColorStop(1, '#0c1120');
+    pctx.fillStyle = g; pctx.fillRect(0, 0, px, px);
+
+    const fr = FRAMING[(spec && spec.body) || 'humanoid'] || FRAMING.humanoid;
+    const s = px / fr.keep;
+
+    const savedCtx = ctx, sx = cam.x, sy = cam.y;
+    ctx = pctx; cam.x = 0; cam.y = 0;
+    try {
+      creature(spec, px * fr.cx, fr.feet * s, { scale: s, facing: 'down', bob: false });
+    } catch (e) {
+      /* a portrait is decoration; never let a bad spec take the dialogue down */
+      console.warn('portrait failed', e);
+    } finally { ctx = savedCtx; cam.x = sx; cam.y = sy; }
+    return c;
+  }
+
   /* ================= PARTICLES ================= */
   function emit(kind, x, y, n, opts) {
     n = n || 8; opts = opts || {};
@@ -743,6 +927,54 @@ DH.gfx = (function () {
     }
   }
   function clearParticles() { particles.length = 0; }
+
+  /* ---------- hit flash ----------
+     Every colour in a creature spec swapped for one flat colour, so the same
+     painters that drew the figure can redraw it as a silhouette. That is how a
+     hit registers on the body itself rather than only in a floating number. */
+  function silhouette(spec, col) {
+    const out = {};
+    for (const k in spec) {
+      const v = spec[k];
+      out[k] = (typeof v === 'string' && v.charAt(0) === '#') ? col : v;
+    }
+    return out;
+  }
+
+  /* ---------- projectiles ----------
+     An arrow or a firebolt has to cross the ground between two people, or the
+     only evidence anything happened is the number that appears at the far end.
+     bolt() resolves when the mote lands, so combat can await the travel and
+     apply the damage on arrival. */
+  const bolts = [];
+  function bolt(x1, y1, x2, y2, o) {
+    o = o || {};
+    const b = {
+      x1, y1, x2, y2, t: 0, dur: o.dur || 13, kind: o.kind || 'spark',
+      size: o.size || 3, arc: o.arc || 0, trail: o.trail !== false, done: null
+    };
+    bolts.push(b);
+    return new Promise(res => { b.done = res; });
+  }
+  function updateBolts() {
+    for (let i = bolts.length - 1; i >= 0; i--) {
+      const b = bolts[i];
+      b.t++;
+      const k = Math.min(1, b.t / b.dur);
+      const x = b.x1 + (b.x2 - b.x1) * k;
+      const y = b.y1 + (b.y2 - b.y1) * k - Math.sin(k * Math.PI) * b.arc;
+      const pal = PCOL[b.kind] || PCOL.spark;
+      if (b.trail) emit(b.kind, x, y, 1, { life: 11, speed: .25, grav: 0, size: 2 });
+      alpha(.55, () => ellipse(x, y, b.size * 1.9, b.size * 1.9, pal[1] || pal[0]));
+      rect(x - b.size / 2, y - b.size / 2, b.size, b.size, pal[0]);
+      if (k >= 1) { bolts.splice(i, 1); if (b.done) b.done(); }
+    }
+  }
+  function clearBolts() {
+    /* a scene change must not leave combat waiting on a mote that will never land */
+    while (bolts.length) { const b = bolts.pop(); if (b.done) b.done(); }
+  }
+  const boltCount = () => bolts.length;
 
   /* Floating combat text */
   function floater(str, x, y, col, size) {
@@ -839,8 +1071,9 @@ DH.gfx = (function () {
     setZoom, getZoom, viewW, viewH,
     rect, stroke, ellipse, ellipseS, poly, lineTo, text, label, measure, alpha,
     drawTile, drawProp, TILES, PROPS,
-    creature, humanoid, dragon, drawWeapon,
+    creature, humanoid, dragon, drawWeapon, portrait,
     emit, updateParticles, clearParticles, floater, updateFloaters, clearFloaters,
+    silhouette, bolt, updateBolts, clearBolts, boltCount,
     rain, snowfall, tintOverlay, lighting, vignette, flash, healthBar, hash,
     get ctx() { return ctx; },
     get tick() { return tick; },

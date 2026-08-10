@@ -382,7 +382,7 @@ DH.scenes.journal = (function () {
     DH.ui.add(right, 'h3', '', 'THE ISLAND SO FAR');
     const notes = [];
     if (DH.game.flag('has_pods')) notes.push('You each carry a P.A.C.T. Pod, and the Command Pod charges four of them on a long rest.');
-    if (DH.game.flag('act1_done')) notes.push('An Ancient Golden Dragon spoke through Wyatt on the dock: "Where have they gone, please, help me child."');
+    if (DH.game.flag('act1_done')) notes.push('An Ancient Golden Dragon spoke through you on the dock: "Where have they gone, please, help me child."');
     if (DH.game.flag('half_dragon_beaten')) notes.push('The crazy ones are caught, and the Half-Dragon in the square is down. They all said the same thing about eggs, in the same voice.');
     if (DH.game.flag('mine_done')) notes.push('Grimble the gnome brews something that keeps small dragons calm. He is looking for a gnome named Grimey.');
     if (DH.game.flag('green_dragon_took_egg')) notes.push('An adult green dragon dropped a five-foot golden egg in the swamp, then came back for it. MINE, it said, inside your heads.');

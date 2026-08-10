@@ -46,13 +46,20 @@ DH.scenes.overworld = (function () {
     refreshPlayerLook();
 
     /* companions trail behind */
-    followers = DH.game.party().slice(1).map((ch, i) => {
-      /* a loose ring, so five companions do not stack into one silhouette */
-      const a = (i / Math.max(1, DH.game.party().length - 1)) * Math.PI * 2 + 0.6;
+    const band = DH.game.party().slice(1);
+    followers = band.map((ch, i) => {
+      /* A ring for when you stop, wide enough that nobody overlaps anybody. */
+      const a = (i / Math.max(1, band.length)) * Math.PI * 2 + 0.6;
+      /* And a marching station: alternating sides of the path, stepped further
+         out and further back for each companion, so the party reads as a group
+         walking together rather than one silhouette four deep. */
+      const rank = Math.floor(i / 2) + 1;
       return {
-        ch: ch, px: player.px - (i + 1) * 6, py: player.py,
-        facing: 'down', moving: false, trail: [], delay: 10 + i * 8,
-        ox: Math.round(Math.cos(a) * 13), oy: Math.round(Math.sin(a) * 8)
+        ch: ch, px: player.px - (i + 1) * 10, py: player.py,
+        facing: 'down', moving: false, trail: [],
+        side: (i % 2 ? 1 : -1) * (9 + rank * 5),
+        lag: 4 + rank * 6,
+        ox: Math.round(Math.cos(a) * 30), oy: Math.round(Math.sin(a) * 19)
       };
     });
 
@@ -269,10 +276,25 @@ DH.scenes.overworld = (function () {
       if (player.trail.length > 90) player.trail.pop();
     }
     followers.forEach((f, i) => {
-      const lead = player.trail[Math.min(player.trail.length - 1, 5 + i * 5)];
+      const lead = player.trail[Math.min(player.trail.length - 1, f.lag)];
       if (!lead) return;
-      /* while you stand still they spread into their own spots */
-      const want = player.moving ? lead : { x: player.px + f.ox, y: player.py + f.oy };
+      /* Walking, they used to stack onto the exact breadcrumbs you left, which
+         put the whole party in single file inside your own footprints. Each one
+         now holds station off to one side of the path — the offset is turned
+         perpendicular to the direction you were facing at that breadcrumb, so
+         the formation swings around corners with you instead of through walls.
+         Standing still, they spread into their own spots around you. */
+      let want;
+      if (player.moving) {
+        const along = lead.f === 'left' ? [-1, 0] : lead.f === 'right' ? [1, 0]
+          : lead.f === 'up' ? [0, -1] : [0, 1];
+        const perp = [-along[1], along[0]];
+        want = { x: lead.x + perp[0] * f.side, y: lead.y + perp[1] * f.side };
+        /* never hold station inside scenery */
+        if (!canStand(want.x, want.y)) want = lead;
+      } else {
+        want = { x: player.px + f.ox, y: player.py + f.oy };
+      }
       const dx = want.x - f.px, dy = want.y - f.py;
       const d = Math.hypot(dx, dy);
       if (d > 3) {
@@ -664,6 +686,8 @@ DH.scenes.overworld = (function () {
     loadMap, updateHud, refreshPlayerLook,
     get player() { return player; },
     get map() { return map; },
-    get npcs() { return npcs; }
+    get npcs() { return npcs; },
+    /* read-only seam for tooling: lets a test measure the follow formation */
+    inspect() { return { player: player, followers: followers, npcs: npcs, zoom: worldZoom }; }
   };
 })();

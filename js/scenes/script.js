@@ -241,7 +241,7 @@ DH.scenes.script = (function () {
         return;
       }
       case 'joinAll': {
-        ['mahoraga', 'dex', 'wyatt', 'lucas', 'ball_wizard'].forEach(id => DH.game.addCompanion(id));
+        ['anvil', 'umarion', 'ball_wizard'].forEach(id => DH.game.addCompanion(id));
         DH.ui.toast('The whole party is on its feet.', 'good', 2400);
         return;
       }
